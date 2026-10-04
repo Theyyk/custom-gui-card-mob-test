@@ -103,3 +103,14 @@ HP-полоска рисуется через `RenderLivingEvent.Post`.
 ### Сборка мода
 ```bash
 ./gradlew clean build
+
+## 📸 Скриншоты
+
+### Кастомный GUI
+![GUI](screenshots/gui.png)
+
+### Моб с HP-полоской
+![Mob](screenshots/mob.png)
+
+### Команды
+![Commands](screenshots/commands.png)
