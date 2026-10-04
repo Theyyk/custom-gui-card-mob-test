@@ -122,7 +122,7 @@ HP-полоска рисуется через `RenderLivingEvent.Post`.
 ### Моб с HP-полоской
 ![Mob](screenshots/Mob-HP.png)
 
-### Список команд
+### Список мобов
 ![Commands](screenshots/commands-list.png)
 
 ### Создание моба
