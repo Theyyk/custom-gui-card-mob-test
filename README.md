@@ -103,14 +103,30 @@ HP-полоска рисуется через `RenderLivingEvent.Post`.
 ### Сборка мода
 ```bash
 ./gradlew clean build
+```
+
+### Установка
+
+1. Скачай Forge 1.12.2 (14.23.5.2859).
+2. Установи Forge-сервер.
+3. Положи customguimod-1.0.jar в mods/ клиента и сервера.
+4. Положи MongoDB-драйвер (bson, mongodb-driver-core, mongodb-driver-sync) в mods/.
+5. Запусти MongoDB.
+6. Запусти Forge-сервер и клиент.
 
 ## 📸 Скриншоты
 
 ### Кастомный GUI
-![GUI](screenshots/gui.png)
+![GUI](screenshots/GUI.png)
 
 ### Моб с HP-полоской
-![Mob](screenshots/mob.png)
+![Mob](screenshots/Mob-HP.png)
 
-### Команды
-![Commands](screenshots/commands.png)
+### Список команд
+![Commands](screenshots/commands-list.png)
+
+### Создание моба
+![Spawn](screenshots/commands-spawn.png)
+
+### Больше карточек
+![Cards](screenshots/more-cards.png)
