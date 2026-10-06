@@ -33,16 +33,12 @@ public class CustomCardsCommand extends CommandBase {
         }
 
         if (args[0].equalsIgnoreCase("clear")) {
-            MongoManager.clearCards(player.getUniqueID());
-            player.sendMessage(new TextComponentString("§cВсе карточки очищены"));
+            int deckIndex = MongoManager.getActiveDeck(player.getUniqueID());
+            MongoManager.clearDeck(player.getUniqueID(), deckIndex);
+            player.sendMessage(new TextComponentString("§cВсе карточки в активной колоде очищены"));
 
-            // Уведомляем клиент — перезагрузить GUI
-            if (player.getServer() != null) {
-                // Отправляем пустой пакет, чтобы клиент очистил слоты
-                net.minecraftforge.fml.common.network.simpleimpl.IMessage msg =
-                        new CardPacket(-1, -1, -1, false);
-                NetworkHandler.INSTANCE.sendTo(msg, player);
-            }
+            CardPacket msg = new CardPacket(-1, -1, -1, false);
+            NetworkHandler.INSTANCE.sendTo(msg, player);
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.customguimod;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.monster.EntitySkeleton;
@@ -44,18 +45,48 @@ public class MobManager {
     }
 
     public static void loadFromDatabase(World world) {
-        serverWorld = world;
-        spawns.clear();
+    serverWorld = world;
 
-        List<MongoManager.CustomMob> mobs = MongoManager.getAllMobs();
-        CustomGuiMod.logger.info("Loaded mobs from DB: " + mobs.size());
-        for (MongoManager.CustomMob mob : mobs) {
-            if (!mob.enabled) continue;
-            MobSpawn spawn = new MobSpawn(mob.name, mob.type, mob.hp, mob.money, mob.x, mob.y, mob.z);
-            spawns.add(spawn);
-            spawnMob(spawn);
+    // Удаляем старые кастомные мобы, которые Minecraft сохранил в мире
+    for (Entity entity : new ArrayList<>(world.loadedEntityList)) {
+        if (!(entity instanceof EntityZombie) && !(entity instanceof EntitySkeleton)) {
+            continue;
+        }
+
+        if (!entity.hasCustomName()) {
+            continue;
+        }
+
+        String rawName = entity.getCustomNameTag();
+
+        if (rawName.startsWith("§c") && rawName.contains("|money|")) {
+            entity.setDead();
+            CustomGuiMod.logger.info("Removed old persisted custom mob: " + rawName);
         }
     }
+
+    spawns.clear();
+
+    List<MongoManager.CustomMob> mobs = MongoManager.getAllMobs();
+    CustomGuiMod.logger.info("Loaded mobs from DB: " + mobs.size());
+
+    for (MongoManager.CustomMob mob : mobs) {
+        if (!mob.enabled) continue;
+
+        MobSpawn spawn = new MobSpawn(
+                mob.name,
+                mob.type,
+                mob.hp,
+                mob.money,
+                mob.x,
+                mob.y,
+                mob.z
+        );
+
+        spawns.add(spawn);
+        spawnMob(spawn);
+    }
+}
 
     public static void respawnAll() {
         for (MobSpawn spawn : spawns) {
@@ -79,7 +110,7 @@ public class MobManager {
         }
 
         entity.setPosition(spawn.x, spawn.y, spawn.z);
-        entity.setCustomNameTag("§c" + spawn.name);
+        entity.setCustomNameTag("§c" + spawn.name + "|" + spawn.hp + "|" + spawn.hp + "|money|" + spawn.money);
         entity.setAlwaysRenderNameTag(true);
         entity.setFire(0);
         entity.getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(spawn.hp);
@@ -153,15 +184,22 @@ public class MobManager {
     }
 
     @SubscribeEvent
-    public void onMobDrops(LivingDropsEvent event) {
-        if (!(event.getEntityLiving() instanceof EntityLiving)) return;
-
-        for (MobSpawn spawn : spawns) {
-            if (spawn.entity == event.getEntityLiving()) {
-                event.getDrops().clear();
-                event.setCanceled(true);
-                return;
-            }
-        }
+public void onMobDrops(LivingDropsEvent event) {
+    if (!(event.getEntityLiving() instanceof EntityZombie)
+            && !(event.getEntityLiving() instanceof EntitySkeleton)) {
+        return;
     }
+
+    EntityLiving entity = (EntityLiving) event.getEntityLiving();
+
+    if (!entity.hasCustomName()) return;
+
+    String rawName = entity.getCustomNameTag();
+
+    if (!rawName.startsWith("§c")) return;
+    if (!rawName.contains("|money|")) return;
+
+    event.getDrops().clear();
+    event.setCanceled(true);
+}
 }

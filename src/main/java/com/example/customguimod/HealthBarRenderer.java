@@ -23,39 +23,37 @@ public class HealthBarRenderer {
         if (!(entity instanceof EntityLiving)) return;
         if (entity == Minecraft.getMinecraft().player) return;
         if (!entity.hasCustomName()) return;
-
-        // Только зомби и скелеты
         if (!(entity instanceof EntityZombie) && !(entity instanceof EntitySkeleton)) return;
 
-        String name = entity.getCustomNameTag();
+        String rawName = entity.getCustomNameTag();
+        if (!rawName.startsWith("§c")) return;
+        if (!rawName.contains("|")) return;
 
-        // Имя должно начинаться с §c
-        if (!name.startsWith("§c")) return;
+        String data = rawName.substring(2);
+        String[] parts = data.split("\\|");
+        if (parts.length < 5) return;
 
-        // Имя не должно содержать скобки
-        if (name.contains("[")) return;
+        String mobName = parts[0];
+String resourceAmount = parts[4];
 
-        // Не рисуем далёких мобов
-        if (entity.getDistance(Minecraft.getMinecraft().player) > 32.0F) return;
+float currentHp = entity.getHealth();
+float maxHp = entity.getMaxHealth();
 
-        float health = entity.getHealth();
-        float maxHealth = entity.getMaxHealth();
-        if (maxHealth <= 0) return;
-        if (health <= 0) return;
+if (maxHp <= 0 || currentHp <= 0) return;
+if (entity.getDistance(Minecraft.getMinecraft().player) > 32.0F) return;
 
-        float ratio = health / maxHealth;
+float ratio = currentHp / maxHp;
+ratio = Math.max(0.0F, Math.min(1.0F, ratio));
 
         double x = event.getX();
         double y = event.getY() + entity.height + 0.5;
         double z = event.getZ();
 
-        // === СОХРАНЯЕМ ВСЁ СОСТОЯНИЕ ===
         GlStateManager.pushMatrix();
         GlStateManager.pushAttrib();
 
         GlStateManager.translate(x, y, z);
         GlStateManager.rotate(-Minecraft.getMinecraft().getRenderManager().playerViewY, 0.0F, 1.0F, 0.0F);
-        GlStateManager.rotate(Minecraft.getMinecraft().getRenderManager().playerViewX, 1.0F, 0.0F, 0.0F);
         GlStateManager.scale(-0.025F, -0.025F, 0.025F);
 
         GlStateManager.disableTexture2D();
@@ -78,23 +76,27 @@ public class HealthBarRenderer {
         else color = 0xFFFF0000;
         drawRect(-halfWidth, 0, -halfWidth + fillWidth, barHeight, color);
 
-        // Восстанавливаем до отрисовки текста
-        GlStateManager.enableTexture2D();
-        GlStateManager.enableDepth();
         GlStateManager.disableBlend();
         GlStateManager.enableLighting();
+        GlStateManager.enableDepth();
+        GlStateManager.enableTexture2D();
 
         FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-        String text = (int) health + " / " + (int) maxHealth;
-        int textWidth = font.getStringWidth(text);
 
+        String hpText = (int) Math.ceil(currentHp) + " / " + (int) Math.ceil(maxHp);
+        int hpWidth = font.getStringWidth(hpText);
         GlStateManager.pushMatrix();
-        float scale = 0.6f;
-        GlStateManager.scale(scale, scale, scale);
-        font.drawStringWithShadow(text, -(textWidth / 2), 1, 0xFFFFFF);
+        GlStateManager.scale(0.5f, 0.5f, 0.5f);
+        font.drawString(hpText, -(hpWidth / 2), 3, 0xFFFFFF);
         GlStateManager.popMatrix();
 
-        // === ВОССТАНАВЛИВАЕМ ВСЁ ===
+        int nameWidth = font.getStringWidth(mobName);
+        font.drawString("§c" + mobName, -nameWidth / 2, -10, 0xFFFFFF);
+
+        String resourceText = "x" + resourceAmount;
+int resWidth = font.getStringWidth(resourceText);
+font.drawString("§e" + resourceText, -resWidth / 2, barHeight + 1, 0xFFFFFF);
+
         GlStateManager.popAttrib();
         GlStateManager.popMatrix();
     }

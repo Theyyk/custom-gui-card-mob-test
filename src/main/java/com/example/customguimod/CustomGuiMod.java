@@ -26,6 +26,7 @@ public class CustomGuiMod {
             MongoManager.connect();
             MinecraftForge.EVENT_BUS.register(new PlayerJoinHandler());
             MinecraftForge.EVENT_BUS.register(new MobManager());
+            MinecraftForge.EVENT_BUS.register(new DamageBonusHandler());
         } else {
             NetworkHandler.registerClient();
         }
@@ -40,14 +41,16 @@ public class CustomGuiMod {
         MinecraftForge.EVENT_BUS.register(new KeyInputHandler());
         MinecraftForge.EVENT_BUS.register(new ClientPacketHandler());
         MinecraftForge.EVENT_BUS.register(new HealthBarRenderer());
+        MinecraftForge.EVENT_BUS.register(new NameHider());
         logger.info("CustomGuiMod client init done");
     }
 
     @Mod.EventHandler
-public void serverStarting(FMLServerStartingEvent event) {
-    event.registerServerCommand(new CustomMobCommand());
-    event.registerServerCommand(new CustomCardsCommand());
-    net.minecraft.world.World world = event.getServer().getWorld(0);
-    MobManager.loadFromDatabase(world);
-}
+    public void serverStarting(FMLServerStartingEvent event) {
+        event.registerServerCommand(new CustomMobCommand());
+        event.registerServerCommand(new CustomCardsCommand());
+        event.registerServerCommand(new CustomDeckCommand());
+        net.minecraft.world.World world = event.getServer().getWorld(0);
+        MobManager.loadFromDatabase(world);
+    }
 }
