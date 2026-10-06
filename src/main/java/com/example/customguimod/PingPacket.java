@@ -10,7 +10,9 @@ import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 public class PingPacket implements IMessage {
 
@@ -37,6 +39,8 @@ public class PingPacket implements IMessage {
     }
 
     public static class Handler implements IMessageHandler<PingPacket, IMessage> {
+        private static final int CARD_COST = 100;
+
         @Override
         @SideOnly(Side.SERVER)
         public IMessage onMessage(PingPacket message, MessageContext ctx) {
@@ -54,37 +58,25 @@ public class PingPacket implements IMessage {
                 }
 
                 if (action.equals("buy_card")) {
-                    if (deckNames.isEmpty()) {
-                        player.sendMessage(new TextComponentString("§cУ тебя нет доступных колод."));
+                    buyCards(player, deckIndex, 1, false);
+                } else if (action.startsWith("buy_cards:")) {
+                    String rawAmount = action.substring("buy_cards:".length());
+
+                    if (rawAmount.equalsIgnoreCase("all")) {
+                        buyCards(player, deckIndex, Integer.MAX_VALUE, true);
                         return;
                     }
 
-                    int balance = MongoManager.getBalance(player.getUniqueID());
-                    if (balance >= 100) {
-                        List<Integer> freeSlots = MongoManager.getFreeSlots(player.getUniqueID(), deckIndex);
-                        if (freeSlots.isEmpty()) {
-                            player.sendMessage(new TextComponentString("§cВсе слоты заняты!"));
-                            NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                    try {
+                        int requestedAmount = Integer.parseInt(rawAmount);
+                        if (requestedAmount != 1 && requestedAmount != 5
+                                && requestedAmount != 10 && requestedAmount != 100) {
+                            player.sendMessage(new TextComponentString("§cНекорректное количество карточек."));
                             return;
                         }
-
-                        MongoManager.setBalance(player.getUniqueID(), balance - 100);
-
-                        int slot = freeSlots.get(new java.util.Random().nextInt(freeSlots.size()));
-                        int cardIndex = new java.util.Random().nextInt(10);
-                        int layer = 1;
-                        int level = 1;
-
-                        MongoManager.addCardToDeck(player.getUniqueID(), deckIndex, slot, cardIndex, layer, level);
-                        NetworkHandler.INSTANCE.sendTo(new CardPacket(slot, cardIndex, layer, true), player);
-
-                        player.sendMessage(new TextComponentString(
-                                "§aКуплена карточка за 100 монет. Остаток: " + (balance - 100)));
-                        NetworkHandler.INSTANCE.sendTo(new PongPacket(balance - 100), player);
-                    } else {
-                        player.sendMessage(new TextComponentString(
-                                "§cНедостаточно монет! Нужно 100, у тебя " + balance));
-                        NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                        buyCards(player, deckIndex, requestedAmount, false);
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(new TextComponentString("§cНекорректное количество карточек."));
                     }
                 } else if (action.equals("get_balance")) {
                     int balance = MongoManager.getBalance(player.getUniqueID());
@@ -118,6 +110,71 @@ public class PingPacket implements IMessage {
                 }
             });
             return null;
+        }
+
+        private void buyCards(EntityPlayerMP player, int deckIndex, int requestedAmount, boolean buyAll) {
+            List<String> decks = MongoManager.getDeckNames(player.getUniqueID());
+            if (decks.isEmpty() || deckIndex < 0 || deckIndex >= decks.size()) {
+                player.sendMessage(new TextComponentString("§cУ тебя нет доступных колод."));
+                return;
+            }
+
+            int balance = MongoManager.getBalance(player.getUniqueID());
+            List<Integer> freeSlots = MongoManager.getFreeSlots(player.getUniqueID(), deckIndex);
+
+            if (freeSlots.isEmpty()) {
+                player.sendMessage(new TextComponentString("§cВсе слоты заняты!"));
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
+            }
+
+            int affordable = balance / CARD_COST;
+            if (affordable <= 0) {
+                player.sendMessage(new TextComponentString(
+                        "§cНедостаточно монет! Нужно минимум " + CARD_COST + ", у тебя " + balance));
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
+            }
+
+            int maxPossible = Math.min(affordable, freeSlots.size());
+            int amountToBuy = buyAll ? maxPossible : Math.min(requestedAmount, maxPossible);
+
+            if (amountToBuy <= 0) {
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
+            }
+
+            Collections.shuffle(freeSlots);
+            Random random = new Random();
+
+            for (int i = 0; i < amountToBuy; i++) {
+                int slot = freeSlots.get(i);
+                int cardIndex = random.nextInt(10);
+                int layer = 1;
+                int level = 1;
+
+                MongoManager.addCardToDeck(
+                        player.getUniqueID(), deckIndex, slot, cardIndex, layer, level);
+                NetworkHandler.INSTANCE.sendTo(
+                        new CardPacket(slot, cardIndex, layer, true), player);
+            }
+
+            int spent = amountToBuy * CARD_COST;
+            int newBalance = balance - spent;
+            MongoManager.setBalance(player.getUniqueID(), newBalance);
+            NetworkHandler.INSTANCE.sendTo(new PongPacket(newBalance), player);
+
+            if (!buyAll && amountToBuy < requestedAmount) {
+                player.sendMessage(new TextComponentString(
+                        "§eКуплено " + amountToBuy + " из " + requestedAmount
+                                + " карточек. Потрачено: " + spent
+                                + ". Остаток: " + newBalance));
+            } else {
+                player.sendMessage(new TextComponentString(
+                        "§aКуплено карточек: " + amountToBuy
+                                + ". Потрачено: " + spent
+                                + ". Остаток: " + newBalance));
+            }
         }
 
         private void sendDeckState(EntityPlayerMP player) {
