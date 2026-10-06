@@ -118,6 +118,7 @@ public class CustomDeckCommand extends CommandBase {
                 String deckName = decks.get(index);
                 MongoManager.deleteDeck(player.getUniqueID(), index);
                 player.sendMessage(new TextComponentString("§cКолода " + deckName + " удалена"));
+                PlayerStatsService.sendTo(player);
             } catch (NumberFormatException e) {
                 player.sendMessage(new TextComponentString("§cНомер должен быть числом"));
             }

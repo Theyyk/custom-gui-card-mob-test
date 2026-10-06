@@ -78,6 +78,8 @@ public class PingPacket implements IMessage {
                     } catch (NumberFormatException e) {
                         player.sendMessage(new TextComponentString("§cНекорректное количество карточек."));
                     }
+                } else if (action.equals("get_player_stats")) {
+                    PlayerStatsService.sendTo(player);
                 } else if (action.equals("get_balance")) {
                     int balance = MongoManager.getBalance(player.getUniqueID());
                     player.sendMessage(new TextComponentString(
@@ -162,7 +164,7 @@ public class PingPacket implements IMessage {
             int spent = amountToBuy * CARD_COST;
             int newBalance = balance - spent;
             MongoManager.setBalance(player.getUniqueID(), newBalance);
-            NetworkHandler.INSTANCE.sendTo(new PongPacket(newBalance), player);
+            PlayerStatsService.sendTo(player);
 
             if (!buyAll && amountToBuy < requestedAmount) {
                 player.sendMessage(new TextComponentString(

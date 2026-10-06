@@ -12,15 +12,9 @@ public class PongPacketHandler implements IMessageHandler<PongPacket, IMessage> 
 
     @Override
     public IMessage onMessage(PongPacket message, MessageContext ctx) {
-        CustomGuiMod.logger.info("PongPacket получен! Баланс: " + message.getBalance());
-
         Minecraft.getMinecraft().addScheduledTask(() -> {
-            if (Minecraft.getMinecraft().currentScreen instanceof CardsGuiScreen) {
-                ((CardsGuiScreen) Minecraft.getMinecraft().currentScreen).setBalance(message.getBalance());
-                CustomGuiMod.logger.info("Баланс обновлён в GUI: " + message.getBalance());
-            } else {
-                CustomGuiMod.logger.info("GUI не открыт — баланс не обновлён");
-            }
+            ClientPlayerStats.setCoins(message.getBalance());
+            CustomGuiMod.logger.info("Coins updated on client: " + message.getBalance());
         });
         return null;
     }

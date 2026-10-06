@@ -13,7 +13,7 @@ import org.apache.logging.log4j.Logger;
 public class CustomGuiMod {
 
     public static final String MODID = "customguimod";
-    public static final String VERSION = "1.0.3";
+    public static final String VERSION = "1.0.4";
 
     public static Logger logger;
 
@@ -42,6 +42,7 @@ public class CustomGuiMod {
         MinecraftForge.EVENT_BUS.register(new ClientPacketHandler());
         MinecraftForge.EVENT_BUS.register(new HealthBarRenderer());
         MinecraftForge.EVENT_BUS.register(new NameHider());
+        MinecraftForge.EVENT_BUS.register(new PlayerStatsHudRenderer());
         logger.info("CustomGuiMod client init done");
     }
 
