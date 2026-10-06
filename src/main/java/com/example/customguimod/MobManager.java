@@ -117,6 +117,7 @@ public class MobManager {
         entity.setHealth(spawn.hp);
         entity.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(0.0D);
         entity.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(1.0D);
+        entity.getEntityAttribute(SharedMonsterAttributes.ARMOR).setBaseValue(0.0D);
         entity.setNoAI(true);
 
         serverWorld.spawnEntity(entity);
