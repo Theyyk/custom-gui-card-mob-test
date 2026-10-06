@@ -1,5 +1,6 @@
 package com.example.customguimod;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.GlStateManager;
@@ -19,14 +20,23 @@ public class CardsGuiScreen extends GuiScreen {
     private static final int CARD_COST = 100;
     private static final int ROWS = 5;
     private static final int COLS = 10;
-    private static final int SLOT_COUNT = ROWS * COLS; // 50
+    private static final int SLOT_COUNT = ROWS * COLS;
 
     private static final int CARD_WIDTH = 40;
     private static final int CARD_HEIGHT = 50;
     private static final int CARD_GAP = 4;
 
+    private static final int DECK_BUTTON_START_ID = 100;
+    private static final int MAX_DECKS = 9;
+    private static final int DECK_BUTTON_WIDTH = 30;
+    private static final int DECK_BUTTON_HEIGHT = 20;
+    private static final int DECK_BUTTON_GAP = 3;
+    private static final ItemStack DECK_ICON = new ItemStack(Blocks.CHEST);
+
     private static List<CardData>[] slots = new List[SLOT_COUNT];
     private final Random random = new Random();
+    private final List<String> deckNames = new ArrayList<>();
+    private int activeDeck = 0;
 
     private static final String[] CARD_NAMES = {
             "Булава", "Накидка вора", "Лесной дух", "Щит",
@@ -55,13 +65,10 @@ public class CardsGuiScreen extends GuiScreen {
     private static final int BRONZE_COLOR = 0xFFCD7F32;
     private static final int SILVER_COLOR = 0xFFC0C0C0;
     private static final int GOLD_COLOR = 0xFFFFD700;
-
     private static final int CARD_BG_COLOR = 0xFFFFEE99;
 
     private final List<FlyingCard> flyingCards = new ArrayList<>();
-
     private int buyAmount = 1;
-
     private static RenderItem renderItem;
 
     private static class CardData {
@@ -109,45 +116,89 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
+    private static class DeckGuiButton extends GuiButton {
+        private final int deckIndex;
+        private final String deckName;
+        private final boolean active;
+
+        DeckGuiButton(int id, int x, int y, int deckIndex, String deckName, boolean active) {
+            super(id, x, y, DECK_BUTTON_WIDTH, DECK_BUTTON_HEIGHT, "");
+            this.deckIndex = deckIndex;
+            this.deckName = deckName;
+            this.active = active;
+        }
+
+        @Override
+        public void drawButton(Minecraft mc, int mouseX, int mouseY, float partialTicks) {
+            super.drawButton(mc, mouseX, mouseY, partialTicks);
+            if (!this.visible) return;
+
+            GlStateManager.pushMatrix();
+            mc.getRenderItem().renderItemIntoGUI(DECK_ICON, this.x + 2, this.y + 2);
+            GlStateManager.popMatrix();
+
+            String number = String.valueOf(deckIndex + 1);
+            int numberColor = active ? 0x55FF55 : 0xFFFFFF;
+            mc.fontRenderer.drawStringWithShadow(number, this.x + 20, this.y + 6, numberColor);
+        }
+
+        int getDeckIndex() {
+            return deckIndex;
+        }
+
+        String getDeckName() {
+            return deckName;
+        }
+
+        boolean isActiveDeck() {
+            return active;
+        }
+    }
+
     @Override
     public void initGui() {
         this.buttonList.clear();
 
         if (renderItem == null) {
-            renderItem = net.minecraft.client.Minecraft.getMinecraft().getRenderItem();
+            renderItem = Minecraft.getMinecraft().getRenderItem();
         }
 
-        // Всегда очищаем слоты при открытии GUI
-for (int i = 0; i < SLOT_COUNT; i++) {
-    slots[i] = new ArrayList<>();
-}
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            slots[i] = new ArrayList<>();
+        }
 
         int centerX = this.width / 2;
         int btnY = this.height - 60;
 
-        // Кнопка «Купить карточку»
         this.buttonList.add(new GuiButton(0, centerX - 100, btnY, 200, 20, "Купить карточку"));
 
-        // Кнопки количества
         this.buttonList.add(new GuiButton(1, centerX - 160, btnY + 25, 50, 18, "x1"));
         this.buttonList.add(new GuiButton(2, centerX - 105, btnY + 25, 50, 18, "x5"));
         this.buttonList.add(new GuiButton(3, centerX - 50, btnY + 25, 50, 18, "x10"));
         this.buttonList.add(new GuiButton(4, centerX + 5, btnY + 25, 50, 18, "x100"));
         this.buttonList.add(new GuiButton(5, centerX + 60, btnY + 25, 50, 18, "xВсе"));
 
-        // Кнопка «Спавн моба»
         this.buttonList.add(new GuiButton(6, centerX - 160, btnY - 25, 100, 18, "Спавн моба"));
-
-        // Кнопка «Баланс»
         this.buttonList.add(new GuiButton(7, centerX + 60, btnY - 25, 100, 18, "Баланс"));
 
-        // Запрашиваем баланс и карточки при открытии GUI
+        rebuildDeckButtons();
+
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_balance"));
+        NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_decks"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_cards"));
     }
 
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
+        if (button.id >= DECK_BUTTON_START_ID && button.id < DECK_BUTTON_START_ID + MAX_DECKS) {
+            int targetDeck = button.id - DECK_BUTTON_START_ID;
+            if (targetDeck >= 0 && targetDeck < deckNames.size() && targetDeck != activeDeck) {
+                clearCards();
+                NetworkHandler.INSTANCE.sendToServer(new PingPacket("switch_deck:" + targetDeck));
+            }
+            return;
+        }
+
         if (button.id == 0) {
             NetworkHandler.INSTANCE.sendToServer(new PingPacket("buy_card"));
         } else if (button.id == 1) buyAmount = 1;
@@ -159,6 +210,33 @@ for (int i = 0; i < SLOT_COUNT; i++) {
             NetworkHandler.INSTANCE.sendToServer(new PingPacket("spawn_mob"));
         } else if (button.id == 7) {
             NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_balance"));
+        }
+    }
+
+    private void rebuildDeckButtons() {
+        for (int i = this.buttonList.size() - 1; i >= 0; i--) {
+            int id = this.buttonList.get(i).id;
+            if (id >= DECK_BUTTON_START_ID && id < DECK_BUTTON_START_ID + MAX_DECKS) {
+                this.buttonList.remove(i);
+            }
+        }
+
+        int count = Math.min(deckNames.size(), MAX_DECKS);
+        if (count <= 0) return;
+
+        int totalWidth = count * DECK_BUTTON_WIDTH + (count - 1) * DECK_BUTTON_GAP;
+        int startX = (this.width - totalWidth) / 2;
+        int y = 43;
+
+        for (int i = 0; i < count; i++) {
+            this.buttonList.add(new DeckGuiButton(
+                    DECK_BUTTON_START_ID + i,
+                    startX + i * (DECK_BUTTON_WIDTH + DECK_BUTTON_GAP),
+                    y,
+                    i,
+                    deckNames.get(i),
+                    i == activeDeck
+            ));
         }
     }
 
@@ -214,7 +292,12 @@ for (int i = 0; i < SLOT_COUNT; i++) {
             drawCard((int) fc.getX(), (int) fc.getY(), fc.cardIndex, fc.color, false);
         }
 
-        drawCenteredString(this.fontRenderer, "Карточки", this.width / 2, 10, 0xFFFFFF);
+        String title = "Карточки";
+        if (!deckNames.isEmpty() && activeDeck >= 0 && activeDeck < deckNames.size()) {
+            title += " — " + deckNames.get(activeDeck);
+        }
+
+        drawCenteredString(this.fontRenderer, title, this.width / 2, 10, 0xFFFFFF);
         drawCenteredString(this.fontRenderer, "Покупка: x" + (buyAmount == Integer.MAX_VALUE ? "Все" : buyAmount),
                 this.width / 2, this.height - 85, 0xFFFF00);
         drawCenteredString(this.fontRenderer,
@@ -222,6 +305,30 @@ for (int i = 0; i < SLOT_COUNT; i++) {
                 this.width / 2, 25, 0xFFFFFF);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
+        drawDeckTooltip(mouseX, mouseY);
+    }
+
+    private void drawDeckTooltip(int mouseX, int mouseY) {
+        for (GuiButton guiButton : this.buttonList) {
+            if (!(guiButton instanceof DeckGuiButton)) continue;
+
+            DeckGuiButton deckButton = (DeckGuiButton) guiButton;
+            if (mouseX < deckButton.x || mouseX > deckButton.x + deckButton.width
+                    || mouseY < deckButton.y || mouseY > deckButton.y + deckButton.height) {
+                continue;
+            }
+
+            List<String> tooltip = new ArrayList<>();
+            tooltip.add("§6" + deckButton.getDeckName());
+            tooltip.add("§7Колода №" + (deckButton.getDeckIndex() + 1));
+            if (deckButton.isActiveDeck()) {
+                tooltip.add("§aАктивная колода");
+            } else {
+                tooltip.add("§eНажмите, чтобы переключить");
+            }
+            this.drawHoveringText(tooltip, mouseX, mouseY);
+            return;
+        }
     }
 
     private void drawSlot(int x, int y, int index, int mouseX, int mouseY) {
@@ -313,41 +420,51 @@ for (int i = 0; i < SLOT_COUNT; i++) {
         CustomGuiMod.logger.info("Баланс обновлён: " + balance);
     }
 
+    public void setDecks(List<String> names, int activeDeck) {
+        this.deckNames.clear();
+        this.deckNames.addAll(names);
+        this.activeDeck = activeDeck;
+        rebuildDeckButtons();
+
+        CustomGuiMod.logger.info("Decks updated on client: " + deckNames.size()
+                + ", active=" + activeDeck);
+    }
+
     public void addCardFromServer(int slot, int cardIndex, int layer, boolean animate) {
-    if (slot < 0 || slot >= SLOT_COUNT) return;
+        if (slot < 0 || slot >= SLOT_COUNT) return;
 
-    if (slots[slot] == null) {
-        slots[slot] = new ArrayList<>();
-    }
-
-    CardData card = new CardData(cardIndex, layer);
-    slots[slot].add(card);
-
-    // Анимация — только если animate = true
-    if (animate) {
-        int[] pos = getSlotPosition(slot);
-        flyingCards.add(new FlyingCard(
-                this.width / 2.0, this.height - 50,
-                pos[0] + CARD_WIDTH / 2.0,
-                pos[1] + CARD_HEIGHT / 2.0,
-                cardIndex, getLayerColor(layer)
-        ));
-    }
-
-    CustomGuiMod.logger.info("Добавлена карточка от сервера: слот " + slot + ", индекс " + cardIndex + " (анимация: " + animate + ")");
-}
-
-public void clearCards() {
-    for (int i = 0; i < SLOT_COUNT; i++) {
-        if (slots[i] == null) {
-            slots[i] = new ArrayList<>();
-        } else {
-            slots[i].clear();
+        if (slots[slot] == null) {
+            slots[slot] = new ArrayList<>();
         }
+
+        CardData card = new CardData(cardIndex, layer);
+        slots[slot].add(card);
+
+        if (animate) {
+            int[] pos = getSlotPosition(slot);
+            flyingCards.add(new FlyingCard(
+                    this.width / 2.0, this.height - 50,
+                    pos[0] + CARD_WIDTH / 2.0,
+                    pos[1] + CARD_HEIGHT / 2.0,
+                    cardIndex, getLayerColor(layer)
+            ));
+        }
+
+        CustomGuiMod.logger.info("Добавлена карточка от сервера: слот " + slot + ", индекс " + cardIndex
+                + " (анимация: " + animate + ")");
     }
-    flyingCards.clear();
-    CustomGuiMod.logger.info("Карточки очищены на клиенте");
-}
+
+    public void clearCards() {
+        for (int i = 0; i < SLOT_COUNT; i++) {
+            if (slots[i] == null) {
+                slots[i] = new ArrayList<>();
+            } else {
+                slots[i].clear();
+            }
+        }
+        flyingCards.clear();
+        CustomGuiMod.logger.info("Карточки очищены на клиенте");
+    }
 
     @Override
     public boolean doesGuiPauseGame() {

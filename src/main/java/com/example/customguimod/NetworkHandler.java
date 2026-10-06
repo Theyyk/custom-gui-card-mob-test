@@ -13,11 +13,13 @@ public class NetworkHandler {
         INSTANCE.registerMessage(PingPacket.Handler.class, PingPacket.class, 0, Side.SERVER);
         INSTANCE.registerMessage(PongPacketServerHandler.class, PongPacket.class, 1, Side.CLIENT);
         INSTANCE.registerMessage(CardPacketServerHandler.class, CardPacket.class, 2, Side.CLIENT);
+        INSTANCE.registerMessage(DeckPacketServerHandler.class, DeckPacket.class, 3, Side.CLIENT);
     }
 
     public static void registerClient() {
         INSTANCE.registerMessage(PingPacketClientHandler.class, PingPacket.class, 0, Side.CLIENT);
         INSTANCE.registerMessage(PongPacketHandler.class, PongPacket.class, 1, Side.CLIENT);
         INSTANCE.registerMessage(CardPacketHandler.class, CardPacket.class, 2, Side.CLIENT);
+        INSTANCE.registerMessage(DeckPacketHandler.class, DeckPacket.class, 3, Side.CLIENT);
     }
 }
