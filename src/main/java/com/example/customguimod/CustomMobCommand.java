@@ -10,6 +10,7 @@ import net.minecraft.util.text.TextComponentString;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class CustomMobCommand extends CommandBase {
@@ -21,31 +22,47 @@ public class CustomMobCommand extends CommandBase {
 
     @Override
     public String getUsage(ICommandSender sender) {
-        return "/custommob create|setspawn|unspawn|delete|list";
+        return "/custommob create <name> <resource> <amount> <hp> <type> | setspawn|unspawn|delete|list";
     }
 
     @Override
     public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
-        List<String> completions = new ArrayList<>();
-
         if (args.length == 1) {
-            completions.add("create");
-            completions.add("setspawn");
-            completions.add("unspawn");
-            completions.add("delete");
-            completions.add("list");
-        } else if (args.length == 2 && (args[0].equalsIgnoreCase("setspawn")
-                || args[0].equalsIgnoreCase("unspawn")
-                || args[0].equalsIgnoreCase("delete"))) {
-            for (MongoManager.CustomMob mob : MongoManager.getAllMobs()) {
-                completions.add(mob.name);
-            }
-        } else if (args.length == 5 && args[0].equalsIgnoreCase("create")) {
-            completions.add("zombie");
-            completions.add("skeleton");
+            return getListOfStringsMatchingLastWord(args,
+                    Arrays.asList("create", "setspawn", "unspawn", "delete", "list"));
         }
 
-        return completions;
+        if (args.length == 2) {
+            if (args[0].equalsIgnoreCase("create")) {
+                return getListOfStringsMatchingLastWord(args, Arrays.asList("<name>"));
+            }
+            if (args[0].equalsIgnoreCase("setspawn")
+                    || args[0].equalsIgnoreCase("unspawn")
+                    || args[0].equalsIgnoreCase("delete")) {
+                List<String> names = new ArrayList<>();
+                for (MongoManager.CustomMob mob : MongoManager.getAllMobs()) {
+                    names.add(mob.name);
+                }
+                return getListOfStringsMatchingLastWord(args, names);
+            }
+        }
+
+        if (args[0].equalsIgnoreCase("create")) {
+            if (args.length == 3) {
+                return getListOfStringsMatchingLastWord(args, ResourceManager.getResourceNames());
+            }
+            if (args.length == 4) {
+                return getListOfStringsMatchingLastWord(args, Arrays.asList("<amount>"));
+            }
+            if (args.length == 5) {
+                return getListOfStringsMatchingLastWord(args, Arrays.asList("<hp>"));
+            }
+            if (args.length == 6) {
+                return getListOfStringsMatchingLastWord(args, Arrays.asList("zombie", "skeleton"));
+            }
+        }
+
+        return new ArrayList<>();
     }
 
     @Override
@@ -57,53 +74,59 @@ public class CustomMobCommand extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
 
         if (args.length == 0) {
-            player.sendMessage(new TextComponentString("§e/custommob create <имя> [деньги] [хп] [тип]"));
-            player.sendMessage(new TextComponentString("§e/custommob setspawn <имя>"));
-            player.sendMessage(new TextComponentString("§e/custommob unspawn <имя>"));
-            player.sendMessage(new TextComponentString("§e/custommob delete <имя>"));
-            player.sendMessage(new TextComponentString("§e/custommob list"));
+            showUsage(player);
             return;
         }
 
         if (args[0].equalsIgnoreCase("create")) {
-            if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/custommob create <имя> [деньги] [хп] [тип]"));
+            if (args.length != 6) {
+                player.sendMessage(new TextComponentString("§c/custommob create <name> <resource> <amount> <hp> <type>"));
                 return;
             }
+
             String name = args[1];
+            String resource = ResourceManager.findCanonicalName(args[2]);
 
             if (MongoManager.getMob(name) != null) {
                 player.sendMessage(new TextComponentString("§cМоб с именем " + name + " уже существует!"));
                 return;
             }
-
-            int money = 50;
-            int hp = 10;
-            String type = "zombie";
-
-            if (args.length >= 3) {
-                try {
-                    money = Integer.parseInt(args[2]);
-                } catch (NumberFormatException e) {
-                    type = args[2];
-                }
-            }
-            if (args.length >= 4) {
-                try {
-                    hp = Integer.parseInt(args[3]);
-                } catch (NumberFormatException e) {
-                    type = args[3];
-                }
-            }
-            if (args.length >= 5) {
-                type = args[4];
+            if (resource == null) {
+                player.sendMessage(new TextComponentString("§cРесурс не найден: " + args[2]));
+                return;
             }
 
-            MongoManager.createMob(name, type, hp, money);
-            player.sendMessage(new TextComponentString("§aМоб создан: " + name + " (" + type + ", HP " + hp + ", " + money + " монет)"));
+            int amount;
+            int hp;
+            try {
+                amount = Integer.parseInt(args[3]);
+                hp = Integer.parseInt(args[4]);
+            } catch (NumberFormatException e) {
+                player.sendMessage(new TextComponentString("§camount и hp должны быть числами"));
+                return;
+            }
+
+            if (amount <= 0 || hp <= 0) {
+                player.sendMessage(new TextComponentString("§camount и hp должны быть больше 0"));
+                return;
+            }
+
+            String type = args[5].toLowerCase();
+            if (!type.equals("zombie") && !type.equals("skeleton")) {
+                player.sendMessage(new TextComponentString("§cТип должен быть zombie или skeleton"));
+                return;
+            }
+
+            MongoManager.createMob(name, type, hp, amount);
+            ResourceManager.setMobReward(name, resource, amount);
+            player.sendMessage(new TextComponentString(
+                    "§aМоб создан: " + name
+                            + " §7(" + type
+                            + ", HP " + hp
+                            + ", " + ResourceManager.getDisplayName(resource) + " x" + amount + ")"));
         } else if (args[0].equalsIgnoreCase("setspawn")) {
             if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/custommob setspawn <имя>"));
+                player.sendMessage(new TextComponentString("§c/custommob setspawn <name>"));
                 return;
             }
             String name = args[1];
@@ -116,7 +139,7 @@ public class CustomMobCommand extends CommandBase {
             MobManager.respawnAll();
         } else if (args[0].equalsIgnoreCase("unspawn")) {
             if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/custommob unspawn <имя>"));
+                player.sendMessage(new TextComponentString("§c/custommob unspawn <name>"));
                 return;
             }
             MongoManager.unspawnMob(args[1]);
@@ -124,7 +147,7 @@ public class CustomMobCommand extends CommandBase {
             MobManager.respawnAll();
         } else if (args[0].equalsIgnoreCase("delete")) {
             if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/custommob delete <имя>"));
+                player.sendMessage(new TextComponentString("§c/custommob delete <name>"));
                 return;
             }
             if (MongoManager.getMob(args[1]) == null) {
@@ -138,8 +161,25 @@ public class CustomMobCommand extends CommandBase {
             List<MongoManager.CustomMob> mobs = MongoManager.getAllMobs();
             player.sendMessage(new TextComponentString("§6Мобы (" + mobs.size() + "):"));
             for (MongoManager.CustomMob mob : mobs) {
-                player.sendMessage(new TextComponentString("§7- " + mob.name + " (" + mob.type + ", HP " + mob.hp + ", " + mob.money + " монет) " + (mob.enabled ? "§aвкл" : "§cвыкл")));
+                String resource = ResourceManager.getMobResource(mob.name);
+                int amount = ResourceManager.getMobAmount(mob.name);
+                player.sendMessage(new TextComponentString(
+                        "§7- " + mob.name
+                                + " (" + mob.type
+                                + ", HP " + mob.hp
+                                + ", " + ResourceManager.getDisplayName(resource) + " x" + amount + ") "
+                                + (mob.enabled ? "§aвкл" : "§cвыкл")));
             }
+        } else {
+            showUsage(player);
         }
+    }
+
+    private void showUsage(EntityPlayerMP player) {
+        player.sendMessage(new TextComponentString("§e/custommob create <name> <resource> <amount> <hp> <type>"));
+        player.sendMessage(new TextComponentString("§e/custommob setspawn <name>"));
+        player.sendMessage(new TextComponentString("§e/custommob unspawn <name>"));
+        player.sendMessage(new TextComponentString("§e/custommob delete <name>"));
+        player.sendMessage(new TextComponentString("§e/custommob list"));
     }
 }
