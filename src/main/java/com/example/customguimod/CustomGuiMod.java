@@ -51,6 +51,7 @@ public class CustomGuiMod {
         event.registerServerCommand(new CustomMobCommand());
         event.registerServerCommand(new CustomCardsCommand());
         event.registerServerCommand(new CustomDeckCommand());
+        event.registerServerCommand(new CustomResourceCommand());
         net.minecraft.world.World world = event.getServer().getWorld(0);
         MobManager.loadFromDatabase(world);
     }

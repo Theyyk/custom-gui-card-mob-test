@@ -34,16 +34,17 @@ public class HealthBarRenderer {
         if (parts.length < 5) return;
 
         String mobName = parts[0];
-String resourceAmount = parts[4];
+        String resource = parts[3];
+        String resourceAmount = parts[4];
 
-float currentHp = entity.getHealth();
-float maxHp = entity.getMaxHealth();
+        float currentHp = entity.getHealth();
+        float maxHp = entity.getMaxHealth();
 
-if (maxHp <= 0 || currentHp <= 0) return;
-if (entity.getDistance(Minecraft.getMinecraft().player) > 32.0F) return;
+        if (maxHp <= 0 || currentHp <= 0) return;
+        if (entity.getDistance(Minecraft.getMinecraft().player) > 32.0F) return;
 
-float ratio = currentHp / maxHp;
-ratio = Math.max(0.0F, Math.min(1.0F, ratio));
+        float ratio = currentHp / maxHp;
+        ratio = Math.max(0.0F, Math.min(1.0F, ratio));
 
         double x = event.getX();
         double y = event.getY() + entity.height + 0.5;
@@ -93,12 +94,19 @@ ratio = Math.max(0.0F, Math.min(1.0F, ratio));
         int nameWidth = font.getStringWidth(mobName);
         font.drawString("§c" + mobName, -nameWidth / 2, -10, 0xFFFFFF);
 
-        String resourceText = "x" + resourceAmount;
-int resWidth = font.getStringWidth(resourceText);
-font.drawString("§e" + resourceText, -resWidth / 2, barHeight + 1, 0xFFFFFF);
+        String resourceText = getDisplayResource(resource) + " x" + resourceAmount;
+        int resWidth = font.getStringWidth(resourceText);
+        font.drawString("§e" + resourceText, -resWidth / 2, barHeight + 1, 0xFFFFFF);
 
         GlStateManager.popAttrib();
         GlStateManager.popMatrix();
+    }
+
+    private String getDisplayResource(String resource) {
+        if (resource.equalsIgnoreCase("coins")) return "Монеты";
+        if (resource.equalsIgnoreCase("crystals")) return "Кристаллы";
+        if (resource.equalsIgnoreCase("lightnings")) return "Молнии";
+        return resource;
     }
 
     private void drawRect(int left, int top, int right, int bottom, int color) {
