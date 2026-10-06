@@ -1,0 +1,75 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - develop
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 8
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "8"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Validate tag version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          PROJECT_VERSION=$(grep -E "^[[:space:]]*version[[:space:]]*=" build.gradle | head -n 1 | sed -E "s/.*['\"]([^'\"]+)['\"].*/\1/")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          echo "build.gradle version: ${PROJECT_VERSION}"
+          echo "Git tag version:       ${TAG_VERSION}"
+
+          if [ -z "${PROJECT_VERSION}" ]; then
+            echo "Could not read version from build.gradle"
+            exit 1
+          fi
+
+          if [ "${PROJECT_VERSION}" != "${TAG_VERSION}" ]; then
+            echo "Tag version does not match build.gradle version"
+            exit 1
+          fi
+
+          if ! grep -Eq "\"version\"[[:space:]]*:[[:space:]]*\"${TAG_VERSION}\"" src/main/resources/mcmod.info; then
+            echo "Tag version does not match src/main/resources/mcmod.info"
+            exit 1
+          fi
+
+      - name: Build mod
+        run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" -Dnet.minecraftforge.gradle.check.certs=false clean build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: customguimod-${{ github.ref_name }}
+          path: build/libs/customguimod-*.jar
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" build/libs/customguimod-*.jar \
+            --title "Custom GUI Mod ${GITHUB_REF_NAME}" \
+            --generate-notes
