@@ -55,7 +55,7 @@ jobs:
           fi
 
       - name: Build mod
-        run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" clean build
+        run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" -Dnet.minecraftforge.gradle.check.certs=false clean build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
