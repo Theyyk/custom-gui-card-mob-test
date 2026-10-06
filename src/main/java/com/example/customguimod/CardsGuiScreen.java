@@ -16,8 +16,6 @@ import java.util.Random;
 
 public class CardsGuiScreen extends GuiScreen {
 
-    private int balance = 0;
-    private static final int CARD_COST = 100;
     private static final int ROWS = 5;
     private static final int COLS = 10;
     private static final int SLOT_COUNT = ROWS * COLS;
@@ -178,12 +176,9 @@ public class CardsGuiScreen extends GuiScreen {
         this.buttonList.add(new GuiButton(4, centerX + 5, btnY + 25, 50, 18, "x100"));
         this.buttonList.add(new GuiButton(5, centerX + 60, btnY + 25, 50, 18, "xВсе"));
 
-        this.buttonList.add(new GuiButton(6, centerX - 160, btnY - 25, 100, 18, "Спавн моба"));
-        this.buttonList.add(new GuiButton(7, centerX + 60, btnY - 25, 100, 18, "Баланс"));
-
         rebuildDeckButtons();
 
-        NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_balance"));
+        NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_player_stats"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_decks"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_cards"));
     }
@@ -207,11 +202,6 @@ public class CardsGuiScreen extends GuiScreen {
         else if (button.id == 3) buyAmount = 10;
         else if (button.id == 4) buyAmount = 100;
         else if (button.id == 5) buyAmount = Integer.MAX_VALUE;
-        else if (button.id == 6) {
-            NetworkHandler.INSTANCE.sendToServer(new PingPacket("spawn_mob"));
-        } else if (button.id == 7) {
-            NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_balance"));
-        }
     }
 
     private void rebuildDeckButtons() {
@@ -227,7 +217,7 @@ public class CardsGuiScreen extends GuiScreen {
 
         int totalWidth = count * DECK_BUTTON_WIDTH + (count - 1) * DECK_BUTTON_GAP;
         int startX = (this.width - totalWidth) / 2;
-        int y = 43;
+        int y = 41;
 
         for (int i = 0; i < count; i++) {
             this.buttonList.add(new DeckGuiButton(
@@ -283,6 +273,7 @@ public class CardsGuiScreen extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
+        PlayerStatsHudRenderer.draw(Minecraft.getMinecraft(), this.width);
 
         for (int i = 0; i < SLOT_COUNT; i++) {
             int[] pos = getSlotPosition(i);
@@ -293,17 +284,9 @@ public class CardsGuiScreen extends GuiScreen {
             drawCard((int) fc.getX(), (int) fc.getY(), fc.cardIndex, fc.color, false);
         }
 
-        String title = "Карточки";
-        if (!deckNames.isEmpty() && activeDeck >= 0 && activeDeck < deckNames.size()) {
-            title += " — " + deckNames.get(activeDeck);
-        }
-
-        drawCenteredString(this.fontRenderer, title, this.width / 2, 10, 0xFFFFFF);
+        drawCenteredString(this.fontRenderer, "Карточки", this.width / 2, 24, 0xFFFFFF);
         drawCenteredString(this.fontRenderer, "Покупка: x" + (buyAmount == Integer.MAX_VALUE ? "Все" : buyAmount),
                 this.width / 2, this.height - 85, 0xFFFF00);
-        drawCenteredString(this.fontRenderer,
-                "§6Монет: §e" + balance + " §7| §6Карточка: §e" + CARD_COST,
-                this.width / 2, 25, 0xFFFFFF);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
         drawDeckTooltip(mouseX, mouseY);
@@ -321,10 +304,7 @@ public class CardsGuiScreen extends GuiScreen {
 
             List<String> tooltip = new ArrayList<>();
             tooltip.add("§6" + deckButton.getDeckName());
-            tooltip.add("§7Колода №" + (deckButton.getDeckIndex() + 1));
-            if (deckButton.isActiveDeck()) {
-                tooltip.add("§aАктивная колода");
-            } else {
+            if (!deckButton.isActiveDeck()) {
                 tooltip.add("§eНажмите, чтобы переключить");
             }
             this.drawHoveringText(tooltip, mouseX, mouseY);
@@ -417,8 +397,7 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     public void setBalance(int balance) {
-        this.balance = balance;
-        CustomGuiMod.logger.info("Баланс обновлён: " + balance);
+        ClientPlayerStats.setCoins(balance);
     }
 
     public void setDecks(List<String> names, int activeDeck) {

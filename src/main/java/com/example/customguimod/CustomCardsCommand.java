@@ -39,6 +39,7 @@ public class CustomCardsCommand extends CommandBase {
 
             CardPacket msg = new CardPacket(-1, -1, -1, false);
             NetworkHandler.INSTANCE.sendTo(msg, player);
+            PlayerStatsService.sendTo(player);
         }
     }
 }

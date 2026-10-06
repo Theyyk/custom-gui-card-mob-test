@@ -42,6 +42,7 @@ public class CustomGuiMod {
         MinecraftForge.EVENT_BUS.register(new ClientPacketHandler());
         MinecraftForge.EVENT_BUS.register(new HealthBarRenderer());
         MinecraftForge.EVENT_BUS.register(new NameHider());
+        MinecraftForge.EVENT_BUS.register(new PlayerStatsHudRenderer());
         logger.info("CustomGuiMod client init done");
     }
 
