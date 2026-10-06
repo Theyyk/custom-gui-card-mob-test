@@ -200,7 +200,8 @@ public class CardsGuiScreen extends GuiScreen {
         }
 
         if (button.id == 0) {
-            NetworkHandler.INSTANCE.sendToServer(new PingPacket("buy_card"));
+            String amount = buyAmount == Integer.MAX_VALUE ? "all" : String.valueOf(buyAmount);
+            NetworkHandler.INSTANCE.sendToServer(new PingPacket("buy_cards:" + amount));
         } else if (button.id == 1) buyAmount = 1;
         else if (button.id == 2) buyAmount = 5;
         else if (button.id == 3) buyAmount = 10;
