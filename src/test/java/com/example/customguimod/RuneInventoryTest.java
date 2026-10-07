@@ -3,6 +3,7 @@ package com.example.customguimod;
 /** Exercises loading and grouping purchases without Minecraft or MongoDB. */
 public final class RuneInventoryTest {
     public static void main(String[] args) {
+        EarthRuneCatalogTest.run();
         RuneInventory inventory = new RuneInventory();
         inventory.set(0, 4, 1);
         inventory.set(26, 4, 2);

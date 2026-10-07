@@ -666,7 +666,9 @@ public class CardsGuiScreen extends GuiScreen {
         int titleX = runePanelX + pad;
         int titleY = runePanelY + pad;
         drawFittedString("РУНЫ", titleX, titleY, runePanelWidth / 2, TEXT_COLOR, true);
-        String count = inventory.occupiedTypeCount(CARD_NAMES.length) + " / " + CARD_NAMES.length;
+        String count = activeDeck == 0
+                ? inventory.ownedCatalogSlotCount() + " / " + EarthRuneCatalog.size()
+                : inventory.occupiedTypeCount(CARD_NAMES.length) + " / " + CARD_NAMES.length;
         fontRenderer.drawString(count,
                 runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
@@ -682,11 +684,17 @@ public class CardsGuiScreen extends GuiScreen {
         }
         int footerY = runePanelY + runePanelHeight - scaled(18, 12);
         drawDivider(titleX, footerY - scaled(6, 3), runePanelWidth - pad * 2);
-        drawFittedString("Доступно: " + CARD_NAMES.length + "  |  Позже: " + (VISIBLE_RUNE_SLOTS - CARD_NAMES.length), titleX, footerY,
+        String catalogInfo = activeDeck == 0 ? "Первая стихия: 26 рун"
+                : "Доступно: " + CARD_NAMES.length + "  |  Позже: " + (VISIBLE_RUNE_SLOTS - CARD_NAMES.length);
+        drawFittedString(catalogInfo, titleX, footerY,
                 runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
     }
 
     private void drawRuneSlot(int x, int y, int visualIndex, int mouseX, int mouseY) {
+        if (activeDeck == 0) {
+            drawEarthRuneSlot(x, y, visualIndex, mouseX, mouseY);
+            return;
+        }
         boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
                 && mouseY >= y && mouseY < y + runeSlotHeight;
         // Reserved catalog positions are not free purchase slots.
@@ -716,6 +724,50 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
+    private void drawEarthRuneSlot(int x, int y, int slot, int mouseX, int mouseY) {
+        EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(slot);
+        if (definition == null) return;
+        boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
+                && mouseY >= y && mouseY < y + runeSlotHeight;
+        drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight,
+                hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
+        drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
+        RuneInventory.Entry owned = inventory.get(slot);
+        if (owned != null) drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(owned.layer));
+        drawEarthDefinition(definition, x, y, runeSlotWidth, runeSlotHeight, owned != null);
+    }
+
+    private void drawEarthDefinition(EarthRuneCatalog.Definition definition, int x, int y, int w, int h, boolean owned) {
+        int split = definition.name.indexOf(' ');
+        if (split < 0) split = definition.name.indexOf('-');
+        boolean wrap = h >= 28 && split > 0;
+        int lines = wrap ? 3 : 2;
+        int lineHeight = Math.max(4, Math.min(10, (h - 2) / lines));
+        int textY = y + Math.max(1, (h - lines * lineHeight) / 2);
+        int nameColor = owned ? TEXT_COLOR : 0xFFABB2B9;
+        if (wrap) {
+            int end = definition.name.charAt(split) == '-' ? split + 1 : split;
+            drawSlotLabel(definition.name.substring(0, end), x + 2, textY, w - 4, lineHeight, nameColor);
+            drawSlotLabel(definition.name.substring(split + 1), x + 2, textY + lineHeight, w - 4, lineHeight, nameColor);
+        } else {
+            drawSlotLabel(definition.name, x + 2, textY, w - 4, lineHeight, nameColor);
+        }
+        drawSlotLabel(definition.type, x + 2, textY + (lines - 1) * lineHeight, w - 4, lineHeight, MUTED_TEXT_COLOR);
+    }
+
+    private void drawSlotLabel(String text, int x, int y, int availableWidth, int lineHeight, int color) {
+        float scale = Math.min(1.0F, lineHeight / 9.0F);
+        float fitScale = Math.max(1, availableWidth) / (float) Math.max(1, fontRenderer.getStringWidth(text));
+        if (fitScale >= 0.5F) scale = Math.min(scale, fitScale);
+        int textWidth = Math.max(1, Math.round(Math.max(1, availableWidth) / scale));
+        String label = fontRenderer.trimStringToWidth(text, textWidth);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(x, y, 0);
+        GlStateManager.scale(scale, scale, 1);
+        fontRenderer.drawString(label, 0, 0, color);
+        GlStateManager.popMatrix();
+    }
+
     private void drawRankCorners(int x, int y, int w, int h, int color) {
         int length = Math.max(4, Math.min(scaled(12, 6), w / 4));
         int thickness = w >= 30 ? 2 : 1;
@@ -736,7 +788,7 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private RuneInventory.Entry getRuneForVisualSlot(int visualIndex) {
-        return inventory.getBoost(visualIndex);
+        return activeDeck == 0 ? inventory.get(visualIndex) : inventory.getBoost(visualIndex);
     }
 
     private void drawRuneTooltip(int mouseX, int mouseY) {
@@ -747,6 +799,14 @@ public class CardsGuiScreen extends GuiScreen {
             if (mouseX < x || mouseX >= x + runeSlotWidth
                     || mouseY < y || mouseY >= y + runeSlotHeight) continue;
 
+            if (activeDeck == 0) {
+                EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(i);
+                List<String> tooltip = new ArrayList<>();
+                tooltip.add("§b" + definition.name);
+                tooltip.add("§7Тип: §f" + definition.type);
+                drawHoveringText(tooltip, mouseX, mouseY);
+                return;
+            }
             RuneInventory.Entry rune = getRuneForVisualSlot(i);
             if (rune == null || rune.cardIndex < 0 || rune.cardIndex >= CARD_NAMES.length) return;
             int cardIndex = rune.cardIndex;
@@ -803,6 +863,11 @@ public class CardsGuiScreen extends GuiScreen {
         drawRect(x - w / 2 + 1, y - h / 2 + 1, x + w / 2 - 1, y + h / 2 - 1, SLOT_BG_COLOR);
         drawRankCorners(x - w / 2, y - h / 2, w, h, card.color);
 
+        if (activeDeck == 0) {
+            EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(card.cardIndex);
+            if (definition != null) drawEarthDefinition(definition, x - w / 2, y - h / 2, w, h, true);
+            return;
+        }
         if (card.cardIndex >= 0 && card.cardIndex < CARD_ICONS.length && w >= 18 && h >= 18) {
             renderItem.renderItemIntoGUI(CARD_ICONS[card.cardIndex], x - 8, y - 8);
         }
@@ -873,14 +938,14 @@ public class CardsGuiScreen extends GuiScreen {
         inventory.set(slot, cardIndex, layer);
         updatePurchaseAvailability();
 
-        if (animate && cardIndex >= 0 && cardIndex < CARD_ICONS.length) {
-            int[] pos = getRuneSlotPosition(cardIndex);
+        if (animate && (activeDeck == 0 ? slot < VISIBLE_RUNE_SLOTS : cardIndex >= 0 && cardIndex < CARD_ICONS.length)) {
+            int[] pos = getRuneSlotPosition(activeDeck == 0 ? slot : cardIndex);
             flyingCards.add(new FlyingCard(
                     centerPanelX + centerPanelWidth / 2.0D,
                     centerPanelY + centerPanelHeight - scaled(45, 24),
                     pos[0] + runeSlotWidth / 2.0D,
                     pos[1] + runeSlotHeight / 2.0D,
-                    cardIndex,
+                    activeDeck == 0 ? slot : cardIndex,
                     getRankColor(layer)
             ));
         }

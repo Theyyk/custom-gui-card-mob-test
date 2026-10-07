@@ -60,6 +60,12 @@ final class RuneInventory {
         return count;
     }
 
+    int ownedCatalogSlotCount() {
+        int count = 0;
+        for (int slot = 0; slot < BOOST_TYPE_COUNT; slot++) if (slots[slot] != null) count++;
+        return count;
+    }
+
     boolean isPurchaseLimitReached() {
         return occupiedCount() >= PURCHASE_LIMIT;
     }

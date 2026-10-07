@@ -126,7 +126,7 @@ public class PingPacket implements IMessage {
 
             if (freeSlots.isEmpty()) {
                 player.sendMessage(new TextComponentString("§eДостигнут лимит покупки: " + RuneInventory.PURCHASE_LIMIT
-                        + " рун в сборке. Ячейки будущих типов пока недоступны."));
+                        + " рун в сборке."));
                 NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
                 return;
             }
@@ -152,7 +152,7 @@ public class PingPacket implements IMessage {
 
             for (int i = 0; i < amountToBuy; i++) {
                 int slot = freeSlots.get(i);
-                int cardIndex = random.nextInt(10);
+                int cardIndex = deckIndex == 0 ? slot : random.nextInt(10);
                 int layer = 1;
                 int level = 1;
 
