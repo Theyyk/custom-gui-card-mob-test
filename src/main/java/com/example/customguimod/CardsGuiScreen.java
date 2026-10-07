@@ -322,7 +322,7 @@ public class CardsGuiScreen extends GuiScreen {
 
         leftPanelX = mainX;
         leftPanelY = mainY;
-        leftPanelHeight = Math.min(mainHeight, scaled(150, 110));
+        leftPanelHeight = Math.min(mainHeight, scaled(118, 84));
 
         centerPanelX = leftPanelX + leftPanelWidth + innerGap;
         centerPanelY = mainY;
@@ -337,9 +337,9 @@ public class CardsGuiScreen extends GuiScreen {
 
     private void updateRuneGridLayout() {
         int pad = scaled(8, 4);
-        int topReserved = scaled(88, 58);
+        int topReserved = scaled(58, 42);
         int availableWidth = Math.max(1, runePanelWidth - pad * 2);
-        int availableHeight = Math.max(1, runePanelHeight - topReserved - scaled(26, 18));
+        int availableHeight = Math.max(1, runePanelHeight - topReserved - scaled(10, 6));
         runeSlotGap = scaled(5, 2);
         runeColumns = 10;
         runeRows = (VISIBLE_RUNE_SLOTS + runeColumns - 1) / runeColumns;
@@ -425,7 +425,7 @@ public class CardsGuiScreen extends GuiScreen {
         if (count <= 0) return;
 
         int x = runePanelX + scaled(8, 4);
-        int y = runePanelY + scaled(60, 38);
+        int y = runePanelY + scaled(31, 22);
         int gap = scaled(3, 2);
         int availableRight = runePanelX + runePanelWidth - scaled(8, 4);
 
@@ -575,23 +575,21 @@ public class CardsGuiScreen extends GuiScreen {
         int x = leftPanelX + pad;
         int textW = Math.max(10, leftPanelWidth - pad * 2);
         int y = leftPanelY + pad;
+
         drawFittedString("СТАТИСТИКА", x, y, textW, TEXT_COLOR, true);
+        y += scaled(18, 13);
+        drawDivider(x, y, textW);
+        y += scaled(9, 6);
+        drawStatLine(x, y, "Клики", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textW);
+
+        y += scaled(23, 16);
+        drawFittedString("РЕСУРСЫ", x, y, textW, TEXT_COLOR, true);
         y += scaled(18, 13);
         drawDivider(x, y, textW);
         y += scaled(9, 6);
         drawStatLine(x, y, "Монеты", String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D, textW);
         y += scaled(16, 12);
         drawStatLine(x, y, "Кристаллы", String.valueOf(ClientPlayerStats.getCrystals()), 0xFF56D7E8, textW);
-        y += scaled(16, 12);
-        drawStatLine(x, y, "Урон", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textW);
-        y += scaled(23, 17);
-        drawDivider(x, y, textW);
-        y += scaled(10, 7);
-        drawFittedString("ВЫБРАННАЯ СБОРКА", x, y, textW, MUTED_TEXT_COLOR, false);
-        y += scaled(17, 12);
-        String selected = activeDeck >= 0 && activeDeck < deckNames.size()
-                ? deckNames.get(activeDeck) : "—";
-        drawFittedString(selected, x, y, textW, TEXT_COLOR, true);
     }
 
     private void drawStatLine(int x, int y, String name, String value, int color, int availableWidth) {
@@ -642,12 +640,13 @@ public class CardsGuiScreen extends GuiScreen {
         if (mc.player != null && bodyH > 12) {
             int previewScale = Math.max(1, Math.min(previewW / 2, (bodyH - scaled(8, 4)) / 2));
             int entityBottom = bodyTop + (bodyH + previewScale * 2) / 2;
+            GlStateManager.enableTexture2D();
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
             GuiInventory.drawEntityOnScreen(cx, entityBottom, previewScale,
                     cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         }
-        String purchaseTitle = inventory.isPurchaseLimitReached()
-                ? "ЛИМИТ ПОКУПОК: " + RuneInventory.PURCHASE_LIMIT + "/" + RuneInventory.PURCHASE_LIMIT : "ПОКУПКА РУН";
-        drawFittedString(purchaseTitle, innerX, purchaseTop - scaled(17, 12),
+        drawFittedString("ПОКУПКА РУН", innerX, purchaseTop - scaled(17, 12),
                 innerW, MUTED_TEXT_COLOR, false);
         drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
     }
@@ -673,22 +672,11 @@ public class CardsGuiScreen extends GuiScreen {
         fontRenderer.drawString(count,
                 runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
-        int infoY = runePanelY + scaled(29, 21);
-        drawSection(titleX, infoY, runePanelWidth - pad * 2, scaled(21, 13));
-        String selected = activeDeck >= 0 && activeDeck < deckNames.size() ? deckNames.get(activeDeck) : "—";
-        drawFittedString("Коллекция: " + selected, titleX + scaled(5, 3), infoY + scaled(6, 2),
-                runePanelWidth - pad * 2 - scaled(10, 6), MUTED_TEXT_COLOR, false);
         drawDivider(titleX, runeGridY - scaled(5, 2), runePanelWidth - pad * 2);
         for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
             int[] pos = getRuneSlotPosition(i);
             drawRuneSlot(pos[0], pos[1], i, mouseX, mouseY);
         }
-        int footerY = runePanelY + runePanelHeight - scaled(18, 12);
-        drawDivider(titleX, footerY - scaled(6, 3), runePanelWidth - pad * 2);
-        String catalogInfo = activeDeck == 0 ? "Первая стихия: 26 рун"
-                : "Доступно: " + CARD_NAMES.length + "  |  Позже: " + (VISIBLE_RUNE_SLOTS - CARD_NAMES.length);
-        drawFittedString(catalogInfo, titleX, footerY,
-                runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
     }
 
     private void drawRuneSlot(int x, int y, int visualIndex, int mouseX, int mouseY) {
@@ -698,7 +686,6 @@ public class CardsGuiScreen extends GuiScreen {
         }
         boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
                 && mouseY >= y && mouseY < y + runeSlotHeight;
-        // Reserved catalog positions are not free purchase slots.
         boolean futureType = visualIndex >= CARD_NAMES.length;
         int border = futureType ? PANEL_BORDER_COLOR : (hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
         drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight, border);
