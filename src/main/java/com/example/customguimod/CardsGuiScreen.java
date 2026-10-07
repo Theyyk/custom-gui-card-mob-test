@@ -20,8 +20,7 @@ public class CardsGuiScreen extends GuiScreen {
     // v1.2 presents it as a 26-slot rune collection without changing the server contract yet.
     private static final int STORAGE_SLOT_COUNT = 50;
     private static final int VISIBLE_RUNE_SLOTS = 26;
-    private static final int RUNE_COLUMNS = 13;
-    private static final int RUNE_ROWS = 2;
+    private static final int WIDE_RUNE_COLUMNS = 13;
 
     private static final int GUI_MAX_WIDTH = 900;
     private static final int GUI_MAX_HEIGHT = 500;
@@ -51,6 +50,8 @@ public class CardsGuiScreen extends GuiScreen {
 
     private static List<CardData>[] slots = new List[STORAGE_SLOT_COUNT];
     private final List<String> deckNames = new ArrayList<>();
+    private final List<FlyingCard> flyingCards = new ArrayList<>();
+
     private int activeDeck = 0;
     private int buyAmount = 1;
     private static RenderItem renderItem;
@@ -75,6 +76,8 @@ public class CardsGuiScreen extends GuiScreen {
     private int runePanelWidth;
     private int runePanelHeight;
 
+    private int runeColumns = WIDE_RUNE_COLUMNS;
+    private int runeRows = 2;
     private int runeSlotWidth;
     private int runeSlotHeight;
     private int runeSlotGap;
@@ -110,8 +113,6 @@ public class CardsGuiScreen extends GuiScreen {
             3050, 2720, 2410, 3300, 2500
     };
 
-    private final List<FlyingCard> flyingCards = new ArrayList<>();
-
     private static class CardData {
         int cardIndex;
         int layer;
@@ -136,14 +137,13 @@ public class CardsGuiScreen extends GuiScreen {
             this.startY = startY;
             this.endX = endX;
             this.endY = endY;
-            this.progress = 0;
             this.cardIndex = cardIndex;
             this.color = color;
         }
 
         void update() {
             progress += 0.12;
-            if (progress > 1) progress = 1;
+            if (progress > 1.0) progress = 1.0;
         }
 
         double getX() {
@@ -155,7 +155,7 @@ public class CardsGuiScreen extends GuiScreen {
         }
 
         boolean isDone() {
-            return progress >= 1;
+            return progress >= 1.0;
         }
     }
 
@@ -228,10 +228,6 @@ public class CardsGuiScreen extends GuiScreen {
                     active ? 0xFFFFFFFF : TEXT_COLOR);
         }
 
-        int getElementIndex() {
-            return elementIndex;
-        }
-
         String getElementName() {
             return elementName;
         }
@@ -285,12 +281,11 @@ public class CardsGuiScreen extends GuiScreen {
         ));
 
         String[] amountLabels = {"x1", "x5", "x10", "x100", "xВсе"};
-        int amountCount = amountLabels.length;
         int amountGap = 2;
-        int amountButtonWidth = Math.max(14,
-                (buttonWidth - amountGap * (amountCount - 1)) / amountCount);
+        int amountButtonWidth = Math.max(12,
+                (buttonWidth - amountGap * (amountLabels.length - 1)) / amountLabels.length);
 
-        for (int i = 0; i < amountCount; i++) {
+        for (int i = 0; i < amountLabels.length; i++) {
             FlatGuiButton button = new FlatGuiButton(
                     AMOUNT_BUTTON_START_ID + i,
                     buttonX + i * (amountButtonWidth + amountGap),
@@ -319,7 +314,7 @@ public class CardsGuiScreen extends GuiScreen {
 
         int gap = 3;
         int availableWidth = Math.max(1, runePanelWidth - PANEL_PADDING * 2);
-        int buttonWidth = Math.max(28, (availableWidth - gap * (count - 1)) / count);
+        int buttonWidth = Math.max(20, (availableWidth - gap * (count - 1)) / count);
         int buttonHeight = 18;
         int y = runePanelY + 24;
 
@@ -341,10 +336,12 @@ public class CardsGuiScreen extends GuiScreen {
         int[] amounts = {1, 5, 10, 100, Integer.MAX_VALUE};
         for (GuiButton guiButton : this.buttonList) {
             if (!(guiButton instanceof FlatGuiButton)) continue;
-            if (guiButton.id < AMOUNT_BUTTON_START_ID || guiButton.id >= AMOUNT_BUTTON_START_ID + amounts.length) continue;
+            if (guiButton.id < AMOUNT_BUTTON_START_ID
+                    || guiButton.id >= AMOUNT_BUTTON_START_ID + amounts.length) continue;
 
-            FlatGuiButton button = (FlatGuiButton) guiButton;
-            button.setSelected(buyAmount == amounts[guiButton.id - AMOUNT_BUTTON_START_ID]);
+            ((FlatGuiButton) guiButton).setSelected(
+                    buyAmount == amounts[guiButton.id - AMOUNT_BUTTON_START_ID]
+            );
         }
     }
 
@@ -415,22 +412,46 @@ public class CardsGuiScreen extends GuiScreen {
 
         runeSlotGap = Math.max(2, Math.min(4, availableWidth / 150));
 
-        int widthBased = (availableWidth - runeSlotGap * (RUNE_COLUMNS - 1)) / RUNE_COLUMNS;
-        int heightBased = (availableHeight - runeSlotGap * (RUNE_ROWS - 1)) / RUNE_ROWS;
+        // 13x2 is used when it fits. Narrow screens automatically reflow the same
+        // 26 fixed rune positions into more rows instead of pushing slots outside the panel.
+        int minReadableSlotWidth = 18;
+        int maxColumnsByWidth = Math.max(1,
+                (availableWidth + runeSlotGap) / (minReadableSlotWidth + runeSlotGap));
 
-        runeSlotWidth = Math.max(18, Math.min(46, widthBased));
-        runeSlotHeight = Math.max(24, Math.min(58, Math.min(heightBased, runeSlotWidth * 5 / 4)));
+        if (maxColumnsByWidth >= 13) {
+            runeColumns = 13;
+        } else if (maxColumnsByWidth >= 9) {
+            runeColumns = 9;
+        } else if (maxColumnsByWidth >= 7) {
+            runeColumns = 7;
+        } else if (maxColumnsByWidth >= 5) {
+            runeColumns = 5;
+        } else {
+            runeColumns = Math.max(1, maxColumnsByWidth);
+        }
+        runeRows = (VISIBLE_RUNE_SLOTS + runeColumns - 1) / runeColumns;
 
-        int gridWidth = RUNE_COLUMNS * runeSlotWidth + (RUNE_COLUMNS - 1) * runeSlotGap;
-        int gridHeight = RUNE_ROWS * runeSlotHeight + (RUNE_ROWS - 1) * runeSlotGap;
+        int widthBased = Math.max(1,
+                (availableWidth - runeSlotGap * (runeColumns - 1)) / runeColumns);
+        int heightBased = Math.max(1,
+                (availableHeight - runeSlotGap * (runeRows - 1)) / runeRows);
+
+        // Never force a minimum that can overflow the panel. On very small windows
+        // the slot becomes simpler (type/icon can disappear) but remains inside the GUI.
+        runeSlotWidth = Math.max(8, Math.min(46, widthBased));
+        runeSlotHeight = Math.max(12,
+                Math.min(58, Math.min(heightBased, runeSlotWidth * 5 / 4)));
+
+        int gridWidth = runeColumns * runeSlotWidth + (runeColumns - 1) * runeSlotGap;
+        int gridHeight = runeRows * runeSlotHeight + (runeRows - 1) * runeSlotGap;
 
         runeGridX = runePanelX + (runePanelWidth - gridWidth) / 2;
         runeGridY = runePanelY + topReserved + Math.max(0, (availableHeight - gridHeight) / 4);
     }
 
     private int[] getRuneSlotPosition(int visualIndex) {
-        int row = visualIndex / RUNE_COLUMNS;
-        int col = visualIndex % RUNE_COLUMNS;
+        int row = visualIndex / runeColumns;
+        int col = visualIndex % runeColumns;
         return new int[]{
                 runeGridX + col * (runeSlotWidth + runeSlotGap),
                 runeGridY + row * (runeSlotHeight + runeSlotGap)
@@ -506,7 +527,7 @@ public class CardsGuiScreen extends GuiScreen {
         int y = centerPanelY + PANEL_PADDING;
         this.fontRenderer.drawStringWithShadow("СНАРЯЖЕНИЕ", x, y, TEXT_COLOR);
 
-        int slotSize = Math.max(18, Math.min(30, centerPanelWidth / 6));
+        int slotSize = Math.max(16, Math.min(30, centerPanelWidth / 6));
         int slotGap = 3;
         int topY = centerPanelY + 28;
         int totalTopWidth = slotSize * 4 + slotGap * 3;
@@ -525,8 +546,8 @@ public class CardsGuiScreen extends GuiScreen {
         if (mc.player != null) {
             int previewX = centerPanelX + centerPanelWidth / 2;
             int previewBottom = bottomY - 8;
-            int previewScale = Math.max(18, Math.min(42,
-                    Math.min(centerPanelWidth / 4, Math.max(18, centerPanelHeight / 7))));
+            int previewScale = Math.max(16, Math.min(42,
+                    Math.min(centerPanelWidth / 4, Math.max(16, centerPanelHeight / 7))));
 
             GuiInventory.drawEntityOnScreen(
                     previewX,
@@ -606,7 +627,7 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawRankCorners(int x, int y, int width, int height, int color) {
-        int length = Math.max(5, Math.min(10, width / 4));
+        int length = Math.max(4, Math.min(10, width / 4));
         int thickness = width >= 32 ? 2 : 1;
 
         drawRect(x + 2, y + 2, x + 2 + length, y + 2 + thickness, color);
@@ -622,7 +643,8 @@ public class CardsGuiScreen extends GuiScreen {
             int x = pos[0];
             int y = pos[1];
 
-            if (mouseX < x || mouseX >= x + runeSlotWidth || mouseY < y || mouseY >= y + runeSlotHeight) continue;
+            if (mouseX < x || mouseX >= x + runeSlotWidth
+                    || mouseY < y || mouseY >= y + runeSlotHeight) continue;
 
             CardData rune = getRuneForVisualSlot(i);
             if (rune == null || i >= CARD_NAMES.length) return;
@@ -662,15 +684,15 @@ public class CardsGuiScreen extends GuiScreen {
     private void drawFlyingRune(FlyingCard card) {
         int x = (int) card.getX();
         int y = (int) card.getY();
-        int width = Math.max(22, Math.min(34, runeSlotWidth));
-        int height = Math.max(28, Math.min(42, runeSlotHeight));
+        int width = Math.max(14, Math.min(34, runeSlotWidth));
+        int height = Math.max(18, Math.min(42, runeSlotHeight));
 
         drawRect(x - width / 2, y - height / 2, x + width / 2, y + height / 2, SLOT_BORDER_COLOR);
         drawRect(x - width / 2 + 1, y - height / 2 + 1,
                 x + width / 2 - 1, y + height / 2 - 1, SLOT_BG_COLOR);
         drawRankCorners(x - width / 2, y - height / 2, width, height, card.color);
 
-        if (card.cardIndex >= 0 && card.cardIndex < CARD_ICONS.length) {
+        if (card.cardIndex >= 0 && card.cardIndex < CARD_ICONS.length && width >= 18 && height >= 18) {
             renderItem.renderItemIntoGUI(CARD_ICONS[card.cardIndex], x - 8, y - 8);
         }
     }
