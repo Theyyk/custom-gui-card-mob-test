@@ -747,13 +747,14 @@ public class CardsGuiScreen extends GuiScreen {
         GlStateManager.enableRescaleNormal();
         renderItem.renderItemIntoGUI(icon, 0, 0);
         GlStateManager.popMatrix();
-        drawRuneTypeBadge(type, x + 2, y + h - badgeSize - 2, badgeSize, w - 4);
+        drawRuneTypeBadge(type, x + w - 2, y + h - badgeSize - 2, badgeSize, w - 4);
     }
 
     private void drawRuneTypeBadge(String type, int x, int y, int size, int availableWidth) {
         boolean hybrid = "Клик / Земля".equals(type);
         int glyphSize = hybrid ? Math.max(2, Math.min(size, (availableWidth - 1) / 2)) : size;
         int badgeWidth = hybrid ? glyphSize * 2 + 1 : glyphSize;
+        x -= badgeWidth;
         drawRect(x - 1, y - 1, x + badgeWidth + 1, y + glyphSize + 1, 0xD012161B);
         drawTypeGlyph(hybrid ? "Клик" : type, x, y, glyphSize);
         if (hybrid) drawTypeGlyph("Земля", x + glyphSize + 1, y, glyphSize);
