@@ -19,7 +19,7 @@ public class CardsGuiScreen extends GuiScreen {
     // v1.2 keeps the old server storage contract for now.
     private static final int STORAGE_SLOT_COUNT = 50;
     private static final int VISIBLE_RUNE_SLOTS = 26;
-    private static final int WIDE_RUNE_COLUMNS = 13;
+    private static final int WIDE_RUNE_COLUMNS = 9;
 
     private static final int GUI_MAX_WIDTH = 960;
     private static final int GUI_MAX_HEIGHT = 530;
@@ -112,7 +112,7 @@ public class CardsGuiScreen extends GuiScreen {
     private int runePanelHeight;
 
     private int runeColumns = WIDE_RUNE_COLUMNS;
-    private int runeRows = 2;
+    private int runeRows = 3;
     private int runeSlotWidth;
     private int runeSlotHeight;
     private int runeSlotGap;
@@ -440,23 +440,26 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void updateRuneGridLayout() {
-        int horizontalPadding = Math.max(4, Math.min(PANEL_PADDING, runePanelWidth / 30));
-        int topReserved = compactLayout ? 58 : 60;
-        int bottomPadding = 10;
+        int horizontalPadding = Math.max(5, Math.min(12, runePanelWidth / 26));
+        int topReserved = compactLayout ? 58 : 62;
+        int bottomPadding = 12;
         int availableWidth = Math.max(1, runePanelWidth - horizontalPadding * 2);
         int availableHeight = Math.max(1, runePanelHeight - topReserved - bottomPadding);
 
-        runeSlotGap = Math.max(2, Math.min(4, availableWidth / 150));
+        runeSlotGap = compactLayout ? 3 : 5;
 
-        int minReadableSlotWidth = 18;
         int maxColumnsByWidth = Math.max(1,
-                (availableWidth + runeSlotGap) / (minReadableSlotWidth + runeSlotGap));
+                (availableWidth + runeSlotGap) / (34 + runeSlotGap));
 
-        if (maxColumnsByWidth >= 13) runeColumns = 13;
-        else if (maxColumnsByWidth >= 9) runeColumns = 9;
-        else if (maxColumnsByWidth >= 7) runeColumns = 7;
-        else if (maxColumnsByWidth >= 5) runeColumns = 5;
-        else runeColumns = Math.max(1, maxColumnsByWidth);
+        if (!compactLayout && maxColumnsByWidth >= WIDE_RUNE_COLUMNS) {
+            runeColumns = WIDE_RUNE_COLUMNS;
+        } else if (maxColumnsByWidth >= 7) {
+            runeColumns = 7;
+        } else if (maxColumnsByWidth >= 5) {
+            runeColumns = 5;
+        } else {
+            runeColumns = Math.max(1, maxColumnsByWidth);
+        }
 
         runeRows = (VISIBLE_RUNE_SLOTS + runeColumns - 1) / runeColumns;
 
@@ -465,15 +468,15 @@ public class CardsGuiScreen extends GuiScreen {
         int heightBased = Math.max(1,
                 (availableHeight - runeSlotGap * (runeRows - 1)) / runeRows);
 
-        runeSlotWidth = Math.max(8, Math.min(48, widthBased));
-        runeSlotHeight = Math.max(12,
-                Math.min(58, Math.min(heightBased, runeSlotWidth * 5 / 4)));
+        runeSlotWidth = Math.max(14, Math.min(56, widthBased));
+        runeSlotHeight = Math.max(18,
+                Math.min(66, Math.min(heightBased, runeSlotWidth * 6 / 5)));
 
         int gridWidth = runeColumns * runeSlotWidth + (runeColumns - 1) * runeSlotGap;
         int gridHeight = runeRows * runeSlotHeight + (runeRows - 1) * runeSlotGap;
 
         runeGridX = runePanelX + (runePanelWidth - gridWidth) / 2;
-        runeGridY = runePanelY + topReserved + Math.max(4, (availableHeight - gridHeight) / 8);
+        runeGridY = runePanelY + topReserved + Math.max(6, (availableHeight - gridHeight) / 7);
     }
 
     private int[] getRuneSlotPosition(int visualIndex) {
@@ -571,14 +574,6 @@ public class CardsGuiScreen extends GuiScreen {
         y += 20;
 
         drawFittedString("ЭФФЕКТЫ", textX, y, textWidth, MUTED_TEXT_COLOR, false);
-        y += 14;
-        if (!compactLayout || textWidth >= 75) {
-            drawFittedString("Будут добавлены", textX, y, textWidth, MUTED_TEXT_COLOR, false);
-            y += 11;
-            drawFittedString("в следующих версиях", textX, y, textWidth, MUTED_TEXT_COLOR, false);
-        } else {
-            drawFittedString("Позже", textX, y, textWidth, MUTED_TEXT_COLOR, false);
-        }
 
         int bottomY = leftPanelY + PANEL_PADDING + topHeight + PANEL_GAP;
         int bottomHeight = leftPanelY + leftPanelHeight - PANEL_PADDING - bottomY;
@@ -586,12 +581,6 @@ public class CardsGuiScreen extends GuiScreen {
             drawSection(x, bottomY, sectionWidth, bottomHeight);
             drawFittedString("ВЫБРАННАЯ СБОРКА", textX, bottomY + 9, textWidth, TEXT_COLOR, true);
             drawDivider(x + 6, bottomY + 25, sectionWidth - 12);
-            if (compactLayout) {
-                drawFittedString("Эффекты позже", textX, bottomY + 35, textWidth, MUTED_TEXT_COLOR, false);
-            } else {
-                drawFittedString("Система эффектов", textX, bottomY + 35, textWidth, MUTED_TEXT_COLOR, false);
-                drawFittedString("будет подключена позже", textX, bottomY + 47, textWidth, MUTED_TEXT_COLOR, false);
-            }
         }
     }
 
@@ -628,11 +617,11 @@ public class CardsGuiScreen extends GuiScreen {
                 Math.max(20, innerW), TEXT_COLOR, true);
         drawDivider(innerX, centerPanelY + 23, innerW);
 
-        int slotSize = Math.max(14, Math.min(28, centerPanelWidth / 7));
-        int gap = compactLayout ? 3 : 4;
-        int previewTop = centerPanelY + 33;
-        int controlsReserved = compactLayout ? 84 : 64;
-        int previewBottom = centerPanelY + centerPanelHeight - controlsReserved - 10;
+        int slotSize = Math.max(16, Math.min(30, centerPanelWidth / 7));
+        int gap = compactLayout ? 3 : 5;
+        int previewTop = centerPanelY + 34;
+        int controlsReserved = compactLayout ? 70 : 54;
+        int controlsTop = centerPanelY + centerPanelHeight - controlsReserved;
         int cx = centerPanelX + centerPanelWidth / 2;
 
         int topWidth = slotSize * 4 + gap * 3;
@@ -641,25 +630,26 @@ public class CardsGuiScreen extends GuiScreen {
             drawEquipmentSlot(topX + i * (slotSize + gap), previewTop, slotSize);
         }
 
-        int sideY1 = previewTop + slotSize + 18;
+        int sideY1 = previewTop + slotSize + 20;
         int sideY2 = sideY1 + slotSize + gap;
-        if (!compactLayout || centerPanelWidth >= 175) {
+        boolean showSideSlots = !compactLayout || centerPanelWidth >= 175;
+        if (showSideSlots) {
             drawEquipmentSlot(innerX + 4, sideY1, slotSize);
             drawEquipmentSlot(innerX + 4, sideY2, slotSize);
             drawEquipmentSlot(centerPanelX + centerPanelWidth - PANEL_PADDING - 4 - slotSize, sideY1, slotSize);
             drawEquipmentSlot(centerPanelX + centerPanelWidth - PANEL_PADDING - 4 - slotSize, sideY2, slotSize);
         }
 
-        int bottomY = Math.max(sideY2 + slotSize + 8, previewBottom - slotSize);
+        int bottomY = controlsTop - slotSize - 18;
         for (int i = 0; i < 4; i++) {
             drawEquipmentSlot(topX + i * (slotSize + gap), bottomY, slotSize);
         }
 
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.player != null && bottomY - previewTop > 55) {
-            int entityBottom = bottomY - 6;
-            int previewScale = Math.max(14, Math.min(42,
-                    Math.min(centerPanelWidth / 4, Math.max(14, (bottomY - previewTop) / 5))));
+        if (mc.player != null && bottomY - previewTop > 70) {
+            int entityBottom = bottomY - 5;
+            int previewScale = Math.max(18, Math.min(48,
+                    Math.min(centerPanelWidth / 3, Math.max(18, (bottomY - previewTop) / 4))));
 
             GuiInventory.drawEntityOnScreen(
                     cx,
@@ -670,11 +660,6 @@ public class CardsGuiScreen extends GuiScreen {
                     mc.player
             );
         }
-
-        String selected = "Покупка: " + (buyAmount == Integer.MAX_VALUE ? "xВсе" : "x" + buyAmount);
-        int selectedY = centerPanelY + centerPanelHeight - (compactLayout ? 87 : 67);
-        int selectedX = cx - fontRenderer.getStringWidth(selected) / 2;
-        fontRenderer.drawString(selected, selectedX, selectedY, MUTED_TEXT_COLOR);
     }
 
     private void drawEquipmentSlot(int x, int y, int size) {
@@ -691,7 +676,7 @@ public class CardsGuiScreen extends GuiScreen {
         int titleY = runePanelY + PANEL_PADDING;
 
         fontRenderer.drawStringWithShadow("РУНЫ", titleX, titleY, TEXT_COLOR);
-        String countText = compactLayout ? "26" : "26 слотов";
+        String countText = compactLayout ? "26" : "26 рун";
         fontRenderer.drawString(countText,
                 runePanelX + runePanelWidth - PANEL_PADDING - fontRenderer.getStringWidth(countText),
                 titleY,
@@ -720,29 +705,29 @@ public class CardsGuiScreen extends GuiScreen {
 
         if (visualIndex < CARD_ICONS.length && runeSlotWidth >= 20 && runeSlotHeight >= 24) {
             int iconX = x + (runeSlotWidth - 16) / 2;
-            int iconY = y + Math.max(4, (runeSlotHeight - 16) / 2 - 4);
+            int iconY = y + Math.max(4, (runeSlotHeight - 16) / 2 - 5);
             GlStateManager.pushMatrix();
             GlStateManager.enableRescaleNormal();
             renderItem.renderItemIntoGUI(CARD_ICONS[visualIndex], iconX, iconY);
             GlStateManager.popMatrix();
         }
 
-        if (runeSlotWidth >= 30 && runeSlotHeight >= 36 && visualIndex < RUNE_TYPES.length) {
+        if (runeSlotWidth >= 34 && runeSlotHeight >= 40 && visualIndex < RUNE_TYPES.length) {
             String type = RUNE_TYPES[visualIndex];
-            int maxWidth = Math.max(1, runeSlotWidth - 5);
+            int maxWidth = Math.max(1, runeSlotWidth - 6);
             if (fontRenderer.getStringWidth(type) > maxWidth) {
                 type = fontRenderer.trimStringToWidth(type, maxWidth);
             }
             fontRenderer.drawString(type,
                     x + (runeSlotWidth - fontRenderer.getStringWidth(type)) / 2,
-                    y + runeSlotHeight - 10,
+                    y + runeSlotHeight - 11,
                     0xFFAAB1B8);
         }
     }
 
     private void drawRankCorners(int x, int y, int w, int h, int color) {
-        int length = Math.max(4, Math.min(10, w / 4));
-        int thickness = w >= 30 ? 2 : 1;
+        int length = Math.max(5, Math.min(12, w / 4));
+        int thickness = w >= 34 ? 2 : 1;
 
         drawRect(x + 2, y + 2, x + 2 + length, y + 2 + thickness, color);
         drawRect(x + 2, y + 2, x + 2 + thickness, y + 2 + length, color);
@@ -795,8 +780,8 @@ public class CardsGuiScreen extends GuiScreen {
     private void drawFlyingRune(FlyingCard card) {
         int x = (int) card.getX();
         int y = (int) card.getY();
-        int w = Math.max(14, Math.min(34, runeSlotWidth));
-        int h = Math.max(18, Math.min(42, runeSlotHeight));
+        int w = Math.max(16, Math.min(38, runeSlotWidth));
+        int h = Math.max(20, Math.min(46, runeSlotHeight));
 
         drawRect(x - w / 2, y - h / 2, x + w / 2, y + h / 2, SLOT_BORDER_COLOR);
         drawRect(x - w / 2 + 1, y - h / 2 + 1, x + w / 2 - 1, y + h / 2 - 1, SLOT_BG_COLOR);
