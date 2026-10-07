@@ -13,7 +13,7 @@ import org.apache.logging.log4j.Logger;
 public class CustomGuiMod {
 
     public static final String MODID = "customguimod";
-    public static final String VERSION = "1.0.4";
+    public static final String VERSION = "1.1.0";
 
     public static Logger logger;
 
@@ -51,6 +51,7 @@ public class CustomGuiMod {
         event.registerServerCommand(new CustomMobCommand());
         event.registerServerCommand(new CustomCardsCommand());
         event.registerServerCommand(new CustomDeckCommand());
+        event.registerServerCommand(new CustomResourceCommand());
         net.minecraft.world.World world = event.getServer().getWorld(0);
         MobManager.loadFromDatabase(world);
     }

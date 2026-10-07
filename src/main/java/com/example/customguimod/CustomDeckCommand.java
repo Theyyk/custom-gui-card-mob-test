@@ -10,6 +10,7 @@ import net.minecraft.util.text.TextComponentString;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class CustomDeckCommand extends CommandBase {
@@ -26,14 +27,24 @@ public class CustomDeckCommand extends CommandBase {
 
     @Override
     public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
-        List<String> completions = new ArrayList<>();
         if (args.length == 1) {
-            completions.add("create");
-            completions.add("switch");
-            completions.add("list");
-            completions.add("delete");
+            return getListOfStringsMatchingLastWord(args, Arrays.asList("create", "switch", "list", "delete"));
         }
-        return completions;
+
+        if (args.length == 2 && sender instanceof EntityPlayerMP) {
+            EntityPlayerMP player = (EntityPlayerMP) sender;
+            if (args[0].equalsIgnoreCase("create")) {
+                return getListOfStringsMatchingLastWord(args, Arrays.asList("<name>"));
+            }
+            if (args[0].equalsIgnoreCase("switch") || args[0].equalsIgnoreCase("delete")) {
+                List<String> indexes = new ArrayList<>();
+                List<String> decks = MongoManager.getDeckNames(player.getUniqueID());
+                for (int i = 0; i < decks.size(); i++) indexes.add(String.valueOf(i));
+                return getListOfStringsMatchingLastWord(args, indexes);
+            }
+        }
+
+        return new ArrayList<>();
     }
 
     @Override
@@ -46,16 +57,16 @@ public class CustomDeckCommand extends CommandBase {
         EntityPlayerMP player = (EntityPlayerMP) sender;
 
         if (args.length == 0) {
-            player.sendMessage(new TextComponentString("§e/customdeck create <имя>"));
-            player.sendMessage(new TextComponentString("§e/customdeck switch <номер>"));
+            player.sendMessage(new TextComponentString("§e/customdeck create <name>"));
+            player.sendMessage(new TextComponentString("§e/customdeck switch <index>"));
             player.sendMessage(new TextComponentString("§e/customdeck list"));
-            player.sendMessage(new TextComponentString("§e/customdeck delete <номер>"));
+            player.sendMessage(new TextComponentString("§e/customdeck delete <index>"));
             return;
         }
 
         if (args[0].equalsIgnoreCase("create")) {
             if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/customdeck create <имя>"));
+                player.sendMessage(new TextComponentString("§c/customdeck create <name>"));
                 return;
             }
 
@@ -73,7 +84,7 @@ public class CustomDeckCommand extends CommandBase {
             player.sendMessage(new TextComponentString("§aКолода " + args[1] + " создана"));
         } else if (args[0].equalsIgnoreCase("switch")) {
             if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/customdeck switch <номер>"));
+                player.sendMessage(new TextComponentString("§c/customdeck switch <index>"));
                 return;
             }
 
@@ -102,7 +113,7 @@ public class CustomDeckCommand extends CommandBase {
             }
         } else if (args[0].equalsIgnoreCase("delete")) {
             if (args.length < 2) {
-                player.sendMessage(new TextComponentString("§c/customdeck delete <номер>"));
+                player.sendMessage(new TextComponentString("§c/customdeck delete <index>"));
                 return;
             }
 
