@@ -416,6 +416,7 @@ public class CardsGuiScreen extends GuiScreen {
         rebuildElementButtons();
         rebuildNavigationButtons();
         updateAmountButtonSelection();
+        updatePurchaseAvailability();
     }
 
     private void rebuildElementButtons() {
@@ -476,6 +477,18 @@ public class CardsGuiScreen extends GuiScreen {
         ));
     }
 
+    private void updatePurchaseAvailability() {
+        boolean full = inventory.isPurchaseLimitReached();
+        for (GuiButton button : buttonList) {
+            if (button.id == BUY_BUTTON_ID) {
+                button.enabled = !full;
+                button.displayString = full ? "Лимит достигнут" : "Купить руну";
+            } else if (button.id >= AMOUNT_BUTTON_START_ID && button.id < AMOUNT_BUTTON_START_ID + 5) {
+                button.enabled = !full;
+            }
+        }
+    }
+
     private void updateAmountButtonSelection() {
         int[] amounts = {1, 5, 10, 100, Integer.MAX_VALUE};
         for (GuiButton guiButton : buttonList) {
@@ -491,6 +504,7 @@ public class CardsGuiScreen extends GuiScreen {
 
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
+        if (!button.enabled) return;
         if (button.id == CLOSE_BUTTON_ID) {
             Minecraft.getMinecraft().displayGuiScreen(null);
             return;
@@ -630,7 +644,9 @@ public class CardsGuiScreen extends GuiScreen {
             GuiInventory.drawEntityOnScreen(cx, entityBottom, previewScale,
                     cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
         }
-        drawFittedString("ПОКУПКА РУН", innerX, purchaseTop - scaled(17, 12),
+        String purchaseTitle = inventory.isPurchaseLimitReached()
+                ? "ЛИМИТ ПОКУПОК: " + STORAGE_SLOT_COUNT + "/" + STORAGE_SLOT_COUNT : "ПОКУПКА РУН";
+        drawFittedString(purchaseTitle, innerX, purchaseTop - scaled(17, 12),
                 innerW, MUTED_TEXT_COLOR, false);
         drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
     }
@@ -650,7 +666,7 @@ public class CardsGuiScreen extends GuiScreen {
         int titleX = runePanelX + pad;
         int titleY = runePanelY + pad;
         drawFittedString("РУНЫ", titleX, titleY, runePanelWidth / 2, TEXT_COLOR, true);
-        String count = inventory.occupiedTypeCount() + " / " + VISIBLE_RUNE_SLOTS;
+        String count = inventory.occupiedTypeCount(CARD_NAMES.length) + " / " + CARD_NAMES.length;
         fontRenderer.drawString(count,
                 runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
@@ -666,16 +682,25 @@ public class CardsGuiScreen extends GuiScreen {
         }
         int footerY = runePanelY + runePanelHeight - scaled(18, 12);
         drawDivider(titleX, footerY - scaled(6, 3), runePanelWidth - pad * 2);
-        drawFittedString("Коллекция рун", titleX, footerY,
+        drawFittedString("Доступно: " + CARD_NAMES.length + "  |  Позже: " + (VISIBLE_RUNE_SLOTS - CARD_NAMES.length), titleX, footerY,
                 runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
     }
 
     private void drawRuneSlot(int x, int y, int visualIndex, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
                 && mouseY >= y && mouseY < y + runeSlotHeight;
-        int border = hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR;
+        // Reserved catalog positions are not free purchase slots.
+        boolean futureType = visualIndex >= CARD_NAMES.length;
+        int border = futureType ? PANEL_BORDER_COLOR : (hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
         drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight, border);
         drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
+        if (futureType) {
+            int markSize = Math.max(3, Math.min(scaled(8, 3), runeSlotWidth - 4));
+            int markX = x + (runeSlotWidth - markSize) / 2;
+            int markY = y + runeSlotHeight / 2;
+            drawRect(markX, markY, markX + markSize, markY + 1, MUTED_TEXT_COLOR);
+            return;
+        }
         RuneInventory.Entry rune = getRuneForVisualSlot(visualIndex);
         if (rune == null) return;
         drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(rune.layer));
@@ -846,6 +871,7 @@ public class CardsGuiScreen extends GuiScreen {
         if (slot < 0 || slot >= STORAGE_SLOT_COUNT) return;
 
         inventory.set(slot, cardIndex, layer);
+        updatePurchaseAvailability();
 
         if (animate && cardIndex >= 0 && cardIndex < CARD_ICONS.length) {
             int[] pos = getRuneSlotPosition(cardIndex);
@@ -865,6 +891,7 @@ public class CardsGuiScreen extends GuiScreen {
 
     public void clearCards() {
         inventory.clear();
+        updatePurchaseAvailability();
         flyingCards.clear();
         CustomGuiMod.logger.info("Руны очищены на клиенте");
     }

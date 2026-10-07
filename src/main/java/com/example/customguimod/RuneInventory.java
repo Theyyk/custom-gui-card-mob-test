@@ -36,10 +36,15 @@ final class RuneInventory {
     }
 
     int occupiedTypeCount() {
+        return occupiedTypeCount(BOOST_TYPE_COUNT);
+    }
+
+    int occupiedTypeCount(int availableTypes) {
+        int limit = Math.max(0, Math.min(BOOST_TYPE_COUNT, availableTypes));
         boolean[] present = new boolean[BOOST_TYPE_COUNT];
         int count = 0;
         for (Entry entry : slots) {
-            if (entry != null && !present[entry.cardIndex]) {
+            if (entry != null && entry.cardIndex < limit && !present[entry.cardIndex]) {
                 present[entry.cardIndex] = true;
                 count++;
             }
@@ -51,6 +56,10 @@ final class RuneInventory {
         int count = 0;
         for (Entry entry : slots) if (entry != null) count++;
         return count;
+    }
+
+    boolean isPurchaseLimitReached() {
+        return occupiedCount() >= CAPACITY;
     }
 
     void clear() {

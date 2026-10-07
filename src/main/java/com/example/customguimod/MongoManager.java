@@ -265,7 +265,7 @@ public static void deleteDeck(UUID uuid, int deckIndex) {
 
     public static List<Integer> getFreeSlots(UUID uuid, int deckIndex) {
         List<Integer> free = new ArrayList<>();
-        for (int i = 0; i < 50; i++) free.add(i);
+        for (int i = 0; i < RuneInventory.CAPACITY; i++) free.add(i);
         for (SavedCard card : getCardsInDeck(uuid, deckIndex)) {
             free.remove(Integer.valueOf(card.slot));
         }

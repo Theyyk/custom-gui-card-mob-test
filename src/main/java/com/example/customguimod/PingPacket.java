@@ -125,7 +125,8 @@ public class PingPacket implements IMessage {
             List<Integer> freeSlots = MongoManager.getFreeSlots(player.getUniqueID(), deckIndex);
 
             if (freeSlots.isEmpty()) {
-                player.sendMessage(new TextComponentString("§cВсе слоты заняты!"));
+                player.sendMessage(new TextComponentString("§eДостигнут лимит покупки: " + RuneInventory.CAPACITY
+                        + " рун в сборке. Ячейки будущих типов пока недоступны."));
                 NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
                 return;
             }
