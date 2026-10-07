@@ -36,7 +36,7 @@ public final class RuneInventoryTest {
         check(inventory.occupiedCount() == 0 && inventory.occupiedTypeCount() == 0
                         && inventory.getBoost(4) == null,
                 "Switching collections must clear records and represented types");
-        for (int slot = 0; slot < RuneInventory.CAPACITY; slot++) inventory.set(slot, slot % 10, 1);
+        for (int slot = 0; slot < RuneInventory.LEGACY_RECORD_CAPACITY; slot++) inventory.set(slot, slot % 10, 1);
         check(inventory.occupiedCount() == 50 && inventory.occupiedTypeCount() == 10,
                 "An existing fifty-rune collection must become ten populated boost cells");
         check(inventory.isPurchaseLimitReached() && inventory.occupiedTypeCount(10) == 10,
@@ -45,12 +45,36 @@ public final class RuneInventoryTest {
             RuneInventory.Entry boost = inventory.getBoost(type);
             check((type < 10) == (boost != null), "Only owned types may be populated");
         }
-        for (int slot = 0; slot < RuneInventory.CAPACITY; slot++) {
+        for (int slot = 0; slot < RuneInventory.LEGACY_RECORD_CAPACITY; slot++) {
             check(inventory.get(slot).cardIndex == slot % 10, "Grouping must not change saved purchases");
         }
         inventory.clear();
         check(!inventory.isPurchaseLimitReached(), "Switching to an empty collection must enable purchases");
-        System.out.println("26-type catalog and purchase availability regression checks passed");
+        java.util.List<Integer> occupied = new java.util.ArrayList<>();
+        check(RuneInventory.freePurchaseSlots(occupied).size() == 26,
+                "A new collection must allow exactly 26 purchases");
+        for (int slot = 0; slot < 25; slot++) {
+            occupied.add(slot);
+            inventory.set(slot, slot % 10, 1);
+        }
+        check(!inventory.isPurchaseLimitReached() && RuneInventory.freePurchaseSlots(occupied).size() == 1,
+                "The 26th purchase must remain available");
+        occupied.add(25);
+        inventory.set(25, 5, 1);
+        check(inventory.isPurchaseLimitReached() && RuneInventory.freePurchaseSlots(occupied).isEmpty(),
+                "The 27th purchase must be blocked on both client and server");
+        occupied.clear();
+        for (int slot = 25; slot < 50; slot++) occupied.add(slot);
+        java.util.List<Integer> free = RuneInventory.freePurchaseSlots(occupied);
+        check(free.size() == 1 && free.get(0) < 26 && !occupied.contains(free.get(0)),
+                "Legacy high-numbered slots must count toward the new limit");
+        occupied.add(free.get(0));
+        check(RuneInventory.freePurchaseSlots(occupied).isEmpty(),
+                "Legacy records must not permit more than 26 total purchases");
+        for (int slot = 0; slot < 50; slot++) occupied.add(slot);
+        check(RuneInventory.freePurchaseSlots(occupied).isEmpty(),
+                "An over-limit legacy collection must be preserved but cannot buy more");
+        System.out.println("26-rune purchase limit and legacy compatibility regression checks passed");
     }
 
     private static void check(boolean condition, String message) {

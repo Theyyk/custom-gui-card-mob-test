@@ -16,7 +16,7 @@ import java.util.List;
 
 public class CardsGuiScreen extends GuiScreen {
 
-    private static final int STORAGE_SLOT_COUNT = RuneInventory.CAPACITY;
+    private static final int STORAGE_SLOT_COUNT = RuneInventory.LEGACY_RECORD_CAPACITY;
     private static final int VISIBLE_RUNE_SLOTS = RuneInventory.BOOST_TYPE_COUNT;
 
     private static final int GUI_MAX_WIDTH = 1240;
@@ -645,7 +645,7 @@ public class CardsGuiScreen extends GuiScreen {
                     cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
         }
         String purchaseTitle = inventory.isPurchaseLimitReached()
-                ? "ЛИМИТ ПОКУПОК: " + STORAGE_SLOT_COUNT + "/" + STORAGE_SLOT_COUNT : "ПОКУПКА РУН";
+                ? "ЛИМИТ ПОКУПОК: " + RuneInventory.PURCHASE_LIMIT + "/" + RuneInventory.PURCHASE_LIMIT : "ПОКУПКА РУН";
         drawFittedString(purchaseTitle, innerX, purchaseTop - scaled(17, 12),
                 innerW, MUTED_TEXT_COLOR, false);
         drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);

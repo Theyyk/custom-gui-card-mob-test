@@ -2,7 +2,9 @@ package com.example.customguimod;
 
 /** Keeps server records intact and groups them into the visible boost catalog. */
 final class RuneInventory {
-    static final int CAPACITY = 50;
+    static final int PURCHASE_LIMIT = 26;
+    // Read compatibility only: old purchases may use slots 26-49.
+    static final int LEGACY_RECORD_CAPACITY = 50;
     static final int BOOST_TYPE_COUNT = 26;
 
     static final class Entry {
@@ -14,15 +16,15 @@ final class RuneInventory {
         }
     }
 
-    private final Entry[] slots = new Entry[CAPACITY];
+    private final Entry[] slots = new Entry[LEGACY_RECORD_CAPACITY];
 
     void set(int slot, int cardIndex, int layer) {
-        if (slot < 0 || slot >= CAPACITY || cardIndex < 0 || cardIndex >= BOOST_TYPE_COUNT) return;
+        if (slot < 0 || slot >= LEGACY_RECORD_CAPACITY || cardIndex < 0 || cardIndex >= BOOST_TYPE_COUNT) return;
         slots[slot] = new Entry(cardIndex, layer);
     }
 
     Entry get(int slot) {
-        return slot < 0 || slot >= CAPACITY ? null : slots[slot];
+        return slot < 0 || slot >= LEGACY_RECORD_CAPACITY ? null : slots[slot];
     }
 
     Entry getBoost(int cardIndex) {
@@ -59,7 +61,17 @@ final class RuneInventory {
     }
 
     boolean isPurchaseLimitReached() {
-        return occupiedCount() >= CAPACITY;
+        return occupiedCount() >= PURCHASE_LIMIT;
+    }
+
+    static java.util.List<Integer> freePurchaseSlots(java.util.List<Integer> occupiedSlots) {
+        int remaining = PURCHASE_LIMIT - occupiedSlots.size();
+        java.util.List<Integer> free = new java.util.ArrayList<>();
+        if (remaining <= 0) return free;
+        for (int slot = 0; slot < PURCHASE_LIMIT && free.size() < remaining; slot++) {
+            if (!occupiedSlots.contains(slot)) free.add(slot);
+        }
+        return free;
     }
 
     void clear() {
