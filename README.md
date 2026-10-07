@@ -338,22 +338,25 @@ build/libs/customguimod-1.1.0.jar
 
 ### v1.1.0
 
-#### Added
-- configurable mob reward resources;
-- custom resource management commands;
-- resource rewards assigned per mob;
-- smarter Tab completion across custom commands;
-- prefix-based command completion;
-- resource display above custom mobs.
+#### Добавлено
 
-#### Fixed
-- removed vanilla armor from custom mobs;
-- custom mob damage now matches the expected card damage bonus.
+- настраиваемые ресурсы наград для мобов;
+- команды управления кастомными ресурсами;
+- возможность назначать отдельный ресурс награды каждому мобу;
+- улучшенное Tab-автодополнение для кастомных команд;
+- автодополнение с учётом уже введённого префикса;
+- отображение ресурса и его количества над кастомными мобами.
 
-#### Other
-- backward compatibility for older coin-reward mobs;
-- expanded MongoDB structure for custom resources;
-- refreshed project screenshots and documentation.
+#### Исправлено
+
+- убрана ванильная броня у кастомных мобов;
+- урон по кастомным мобам теперь корректно учитывает бонус урона от карточек.
+
+#### Прочее
+
+- добавлена обратная совместимость со старыми мобами, использующими награду в монетах;
+- расширена структура MongoDB для кастомных ресурсов;
+- обновлены скриншоты и документация проекта.
 
 ---
 
