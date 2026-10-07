@@ -121,3 +121,11 @@ publishing {
         }
     }
 }
+
+// Exercises physical-slot mirroring without starting Minecraft or MongoDB.
+tasks.register('runeInventoryRegression', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.example.customguimod.RuneInventoryTest'
+}
+check.dependsOn runeInventoryRegression

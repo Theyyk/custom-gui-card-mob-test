@@ -16,14 +16,14 @@ import java.util.List;
 
 public class CardsGuiScreen extends GuiScreen {
 
-    private static final int STORAGE_SLOT_COUNT = 50;
-    private static final int VISIBLE_RUNE_SLOTS = 26;
+    private static final int STORAGE_SLOT_COUNT = RuneInventory.CAPACITY;
+    private static final int VISIBLE_RUNE_SLOTS = STORAGE_SLOT_COUNT;
 
-    private static final int GUI_MAX_WIDTH = 980;
-    private static final int GUI_MAX_HEIGHT = 400;
+    private static final int GUI_MAX_WIDTH = 1240;
+    private static final int GUI_MAX_HEIGHT = 620;
     private static final int GUI_OUTER_MARGIN = 10;
 
-    private static final int OVERLAY_COLOR = 0x98000000;
+    private static final int OVERLAY_COLOR = 0x50000000;
     private static final int PANEL_BG_COLOR = 0xE10B0E12;
     private static final int PANEL_BG_SOFT = 0xD211151A;
     private static final int PANEL_BORDER_COLOR = 0xFF252B31;
@@ -77,7 +77,7 @@ public class CardsGuiScreen extends GuiScreen {
             3050, 2720, 2410, 3300, 2500
     };
 
-    private static List<CardData>[] slots = new List[STORAGE_SLOT_COUNT];
+    private final RuneInventory inventory = new RuneInventory();
     private final List<String> deckNames = new ArrayList<>();
     private final List<FlyingCard> flyingCards = new ArrayList<>();
 
@@ -119,23 +119,13 @@ public class CardsGuiScreen extends GuiScreen {
     private int navPanelHeight;
 
     private int purchaseTop;
-    private int runeColumns = 7;
-    private int runeRows = 4;
+    private int runeColumns = 10;
+    private int runeRows = 5;
     private int runeSlotWidth;
     private int runeSlotHeight;
     private int runeSlotGap;
     private int runeGridX;
     private int runeGridY;
-
-    private static class CardData {
-        int cardIndex;
-        int layer;
-
-        CardData(int cardIndex, int layer) {
-            this.cardIndex = cardIndex;
-            this.layer = layer;
-        }
-    }
 
     private static class FlyingCard {
         double startX;
@@ -281,9 +271,7 @@ public class CardsGuiScreen extends GuiScreen {
             renderItem = Minecraft.getMinecraft().getRenderItem();
         }
 
-        for (int i = 0; i < STORAGE_SLOT_COUNT; i++) {
-            slots[i] = new ArrayList<>();
-        }
+        inventory.clear();
 
         updateLayout();
         rebuildControls();
@@ -304,7 +292,7 @@ public class CardsGuiScreen extends GuiScreen {
         float widthScale = availableWidth / (float) GUI_MAX_WIDTH;
         float heightScale = availableHeight / (float) GUI_MAX_HEIGHT;
         layoutScale = Math.min(1.0F, Math.min(widthScale, heightScale));
-        layoutScale = Math.max(0.38F, layoutScale);
+        layoutScale = Math.max(0.1F, layoutScale);
 
         guiWidth = Math.min(availableWidth, Math.round(GUI_MAX_WIDTH * layoutScale));
         guiHeight = Math.min(availableHeight, Math.round(GUI_MAX_HEIGHT * layoutScale));
@@ -314,7 +302,7 @@ public class CardsGuiScreen extends GuiScreen {
         guiY = (height - guiHeight) / 2;
 
         int navGap = scaled(4, 2);
-        navPanelWidth = scaled(34, 24);
+        navPanelWidth = scaled(28, 20);
         navPanelHeight = guiHeight;
         navPanelX = guiX + guiWidth - navPanelWidth;
         navPanelY = guiY;
@@ -327,8 +315,8 @@ public class CardsGuiScreen extends GuiScreen {
         int innerGap = scaled(3, 1);
         int usableWidth = mainWidth - innerGap * 2;
 
-        leftPanelWidth = usableWidth * 18 / 100;
-        centerPanelWidth = usableWidth * 25 / 100;
+        leftPanelWidth = usableWidth * 26 / 100;
+        centerPanelWidth = usableWidth * 26 / 100;
         runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
 
         leftPanelX = mainX;
@@ -337,7 +325,7 @@ public class CardsGuiScreen extends GuiScreen {
 
         centerPanelX = leftPanelX + leftPanelWidth + innerGap;
         centerPanelY = mainY;
-        centerPanelHeight = mainHeight;
+        centerPanelHeight = Math.min(mainHeight, scaled(450, 150));
 
         runePanelX = centerPanelX + centerPanelWidth + innerGap;
         runePanelY = mainY;
@@ -348,13 +336,11 @@ public class CardsGuiScreen extends GuiScreen {
 
     private void updateRuneGridLayout() {
         int pad = scaled(8, 4);
-        int topReserved = scaled(62, 44);
+        int topReserved = scaled(88, 58);
         int availableWidth = Math.max(1, runePanelWidth - pad * 2);
-        int availableHeight = Math.max(1, runePanelHeight - topReserved - pad);
+        int availableHeight = Math.max(1, runePanelHeight - topReserved - scaled(26, 18));
         runeSlotGap = scaled(5, 2);
-
-        // A stable seven-column inventory keeps the 26 slots in four balanced rows.
-        runeColumns = 7;
+        runeColumns = 10;
         runeRows = (VISIBLE_RUNE_SLOTS + runeColumns - 1) / runeColumns;
         int sizeByWidth = (availableWidth - runeSlotGap * (runeColumns - 1)) / runeColumns;
         int sizeByHeight = (availableHeight - runeSlotGap * (runeRows - 1)) / runeRows;
@@ -437,7 +423,7 @@ public class CardsGuiScreen extends GuiScreen {
         if (count <= 0) return;
 
         int x = runePanelX + scaled(8, 4);
-        int y = runePanelY + scaled(30, 22);
+        int y = runePanelY + scaled(60, 38);
         int gap = scaled(3, 2);
         int availableRight = runePanelX + runePanelWidth - scaled(8, 4);
 
@@ -445,7 +431,7 @@ public class CardsGuiScreen extends GuiScreen {
             String name = deckNames.get(i);
             int desired = Math.max(scaled(38, 28), fontRenderer.getStringWidth(name) + scaled(14, 7));
             int remaining = count - i;
-            int maxForThis = Math.max(24, (availableRight - x - gap * (remaining - 1)) / remaining);
+            int maxForThis = Math.max(1, (availableRight - x - gap * (remaining - 1)) / remaining);
             int buttonWidth = Math.min(desired, maxForThis);
             if (x + buttonWidth > availableRight) break;
 
@@ -470,16 +456,21 @@ public class CardsGuiScreen extends GuiScreen {
                 new ItemStack(Items.ENCHANTED_BOOK), true, true
         ));
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 5; i++) {
             y += buttonSize + gap;
             buttonList.add(new NavButton(
                     NAV_PLACEHOLDER_START_ID + i, x, y, buttonSize, buttonSize,
-                    new ItemStack(Items.COMPASS), false, false
+                    new ItemStack(new net.minecraft.item.Item[]{Items.GOLDEN_APPLE, Items.POTIONITEM,
+                            Items.ENDER_PEARL, Items.BOOK, Items.EMERALD}[i]), false, false
             ));
         }
 
         int closeSize = buttonSize;
         int closeY = navPanelY + navPanelHeight - pad - closeSize;
+        buttonList.add(new NavButton(
+                NAV_PLACEHOLDER_START_ID + 5, x, closeY - buttonSize - gap, buttonSize, buttonSize,
+                new ItemStack(Items.REDSTONE), false, false
+        ));
         buttonList.add(new CristalixButton(
                 CLOSE_BUTTON_ID, x, closeY, closeSize, closeSize, "X"
         ));
@@ -601,45 +592,46 @@ public class CardsGuiScreen extends GuiScreen {
         int innerX = centerPanelX + pad;
         int innerW = centerPanelWidth - pad * 2;
         Minecraft mc = Minecraft.getMinecraft();
-        int headerH = scaled(48, 30);
-        drawSection(innerX, centerPanelY + pad, innerW, headerH);
+        int headerH = scaled(60, 30);
+        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, headerH);
         drawFittedString(mc.player == null ? "ИГРОК" : mc.player.getName(),
-                innerX + pad, centerPanelY + pad * 2, innerW - pad * 2, TEXT_COLOR, true);
-        drawFittedString("СНАРЯЖЕНИЕ", innerX + pad,
-                centerPanelY + pad * 2 + scaled(18, 12), innerW - pad * 2, MUTED_TEXT_COLOR, false);
+                innerX, centerPanelY + pad, innerW, TEXT_COLOR, true);
+        drawFittedString("СНАРЯЖЕНИЕ", innerX,
+                centerPanelY + pad + scaled(19, 12), innerW, MUTED_TEXT_COLOR, false);
+        int equipmentY = centerPanelY + headerH + scaled(8, 4);
+        drawPanel(centerPanelX, equipmentY, centerPanelWidth,
+                centerPanelY + centerPanelHeight - equipmentY);
 
-        int gap = scaled(4, 2);
-        int equipmentHeight = purchaseTop - (centerPanelY + pad + headerH + scaled(8, 4)) - scaled(12, 5);
-        int slot = Math.max(1, Math.min(Math.min(scaled(38, 16), (innerW - gap * 4) / 5),
+        int gap = scaled(6, 2);
+        int topY = equipmentY + pad;
+        int equipmentHeight = purchaseTop - topY - scaled(30, 16);
+        int slot = Math.max(1, Math.min(Math.min(scaled(54, 14), (innerW - gap * 4) / 5),
                 (equipmentHeight - gap * 4) / 5));
         int rowWidth = slot * 5 + gap * 4;
         int cx = centerPanelX + centerPanelWidth / 2;
         int rowX = cx - rowWidth / 2;
-        int topY = centerPanelY + pad + headerH + scaled(8, 4);
-        int bottomY = purchaseTop - scaled(12, 5) - slot;
+        int bottomY = topY + 4 * (slot + gap);
         for (int i = 0; i < 5; i++) {
             drawEquipmentSlot(rowX + i * (slot + gap), topY, slot);
             drawEquipmentSlot(rowX + i * (slot + gap), bottomY, slot);
         }
-
         int bodyTop = topY + slot + gap;
-        int bodyBottom = bottomY - gap;
-        int bodyH = Math.max(1, bodyBottom - bodyTop);
-        int sideStackH = slot * 3 + gap * 2;
-        int sideY = bodyTop + Math.max(0, (bodyH - sideStackH) / 2);
+        int bodyH = slot * 3 + gap * 2;
         for (int i = 0; i < 3; i++) {
-            drawEquipmentSlot(rowX, sideY + i * (slot + gap), slot);
-            drawEquipmentSlot(rowX + rowWidth - slot, sideY + i * (slot + gap), slot);
+            drawEquipmentSlot(rowX, bodyTop + i * (slot + gap), slot);
+            drawEquipmentSlot(rowX + rowWidth - slot, bodyTop + i * (slot + gap), slot);
         }
         int previewX = rowX + slot + gap;
         int previewW = rowWidth - (slot + gap) * 2;
         drawSection(previewX, bodyTop, previewW, bodyH);
-        if (mc.player != null && bodyH > 22) {
+        if (mc.player != null && bodyH > 12) {
             int previewScale = Math.max(1, Math.min(previewW / 2, (bodyH - scaled(8, 4)) / 2));
             int entityBottom = bodyTop + (bodyH + previewScale * 2) / 2;
             GuiInventory.drawEntityOnScreen(cx, entityBottom, previewScale,
                     cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
         }
+        drawFittedString("ПОКУПКА РУН", innerX, purchaseTop - scaled(17, 12),
+                innerW, MUTED_TEXT_COLOR, false);
         drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
     }
 
@@ -657,56 +649,48 @@ public class CardsGuiScreen extends GuiScreen {
         int pad = scaled(8, 4);
         int titleX = runePanelX + pad;
         int titleY = runePanelY + pad;
-
-        drawFittedString("РУНЫ", titleX, titleY,
-                runePanelWidth / 2, TEXT_COLOR, true);
-        String count = compactLayout ? "26" : "26 рун";
+        drawFittedString("РУНЫ", titleX, titleY, runePanelWidth / 2, TEXT_COLOR, true);
+        String count = inventory.occupiedCount() + " / " + STORAGE_SLOT_COUNT;
         fontRenderer.drawString(count,
-                runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count),
-                titleY,
-                MUTED_TEXT_COLOR);
+                runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
-
-        drawDivider(titleX, runeGridY - scaled(7, 3), runePanelWidth - pad * 2);
-
+        int infoY = runePanelY + scaled(29, 21);
+        drawSection(titleX, infoY, runePanelWidth - pad * 2, scaled(21, 13));
+        String selected = activeDeck >= 0 && activeDeck < deckNames.size() ? deckNames.get(activeDeck) : "—";
+        drawFittedString("Коллекция: " + selected, titleX + scaled(5, 3), infoY + scaled(6, 2),
+                runePanelWidth - pad * 2 - scaled(10, 6), MUTED_TEXT_COLOR, false);
+        drawDivider(titleX, runeGridY - scaled(5, 2), runePanelWidth - pad * 2);
         for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
             int[] pos = getRuneSlotPosition(i);
             drawRuneSlot(pos[0], pos[1], i, mouseX, mouseY);
         }
+        int footerY = runePanelY + runePanelHeight - scaled(18, 12);
+        drawDivider(titleX, footerY - scaled(6, 3), runePanelWidth - pad * 2);
+        drawFittedString("Слоты коллекции", titleX, footerY,
+                runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
     }
 
     private void drawRuneSlot(int x, int y, int visualIndex, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
                 && mouseY >= y && mouseY < y + runeSlotHeight;
-
         int border = hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR;
         drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight, border);
         drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
-
-        CardData rune = getRuneForVisualSlot(visualIndex);
+        RuneInventory.Entry rune = getRuneForVisualSlot(visualIndex);
         if (rune == null) return;
-
         drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(rune.layer));
-
-        if (visualIndex < CARD_ICONS.length && runeSlotWidth >= 18 && runeSlotHeight >= 22) {
-            int iconX = x + (runeSlotWidth - 16) / 2;
-            int iconY = y + Math.max(3, (runeSlotHeight - 16) / 2 - scaled(4, 2));
+        if (rune.cardIndex >= 0 && rune.cardIndex < CARD_ICONS.length && runeSlotWidth >= 8) {
+            int iconSize = Math.max(4, Math.min(16, runeSlotWidth - 6));
             GlStateManager.pushMatrix();
+            GlStateManager.translate(x + (runeSlotWidth - iconSize) / 2.0F,
+                    y + (runeSlotHeight - iconSize) / 2.0F, 0);
+            GlStateManager.scale(iconSize / 16.0F, iconSize / 16.0F, 1);
             GlStateManager.enableRescaleNormal();
-            renderItem.renderItemIntoGUI(CARD_ICONS[visualIndex], iconX, iconY);
+            renderItem.renderItemIntoGUI(CARD_ICONS[rune.cardIndex], 0, 0);
             GlStateManager.popMatrix();
         }
-
-        if (runeSlotWidth >= 31 && runeSlotHeight >= 37 && visualIndex < RUNE_TYPES.length) {
-            String type = RUNE_TYPES[visualIndex];
-            int max = Math.max(1, runeSlotWidth - 6);
-            if (fontRenderer.getStringWidth(type) > max) {
-                type = fontRenderer.trimStringToWidth(type, max);
-            }
-            fontRenderer.drawString(type,
-                    x + (runeSlotWidth - fontRenderer.getStringWidth(type)) / 2,
-                    y + runeSlotHeight - 11,
-                    0xFFAAB1B8);
+        if (runeSlotWidth >= 24) {
+            fontRenderer.drawString("1", x + runeSlotWidth - 8, y + runeSlotHeight - 10, TEXT_COLOR);
         }
     }
 
@@ -729,18 +713,8 @@ public class CardsGuiScreen extends GuiScreen {
         };
     }
 
-    private CardData getRuneForVisualSlot(int visualIndex) {
-        if (visualIndex < 0 || visualIndex >= CARD_NAMES.length) return null;
-
-        CardData best = null;
-        for (int slotIndex = 0; slotIndex < STORAGE_SLOT_COUNT; slotIndex++) {
-            if (slots[slotIndex] == null) continue;
-            for (CardData card : slots[slotIndex]) {
-                if (card.cardIndex != visualIndex) continue;
-                if (best == null || card.layer > best.layer) best = card;
-            }
-        }
-        return best;
+    private RuneInventory.Entry getRuneForVisualSlot(int visualIndex) {
+        return inventory.get(visualIndex);
     }
 
     private void drawRuneTooltip(int mouseX, int mouseY) {
@@ -751,15 +725,16 @@ public class CardsGuiScreen extends GuiScreen {
             if (mouseX < x || mouseX >= x + runeSlotWidth
                     || mouseY < y || mouseY >= y + runeSlotHeight) continue;
 
-            CardData rune = getRuneForVisualSlot(i);
-            if (rune == null || i >= CARD_NAMES.length) return;
+            RuneInventory.Entry rune = getRuneForVisualSlot(i);
+            if (rune == null || rune.cardIndex < 0 || rune.cardIndex >= CARD_NAMES.length) return;
+            int cardIndex = rune.cardIndex;
 
             List<String> tooltip = new ArrayList<>();
-            tooltip.add("§b" + CARD_NAMES[i]);
+            tooltip.add("§b" + CARD_NAMES[cardIndex]);
             tooltip.add("");
             tooltip.add("§7Ранг: §f" + getRankName(rune.layer));
-            tooltip.add("§7Тип: §f" + (i < RUNE_TYPES.length ? RUNE_TYPES[i] : "Неизвестно"));
-            tooltip.add("§7Эффект: §a+" + CARD_STATS[i]);
+            tooltip.add("§7Тип: §f" + (cardIndex < RUNE_TYPES.length ? RUNE_TYPES[cardIndex] : "Неизвестно"));
+            tooltip.add("§7Эффект: §a+" + CARD_STATS[cardIndex]);
             tooltip.add("§7Усиление: §f0");
             drawHoveringText(tooltip, mouseX, mouseY);
             return;
@@ -822,13 +797,11 @@ public class CardsGuiScreen extends GuiScreen {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        drawDefaultBackground();
         updateLayout();
 
         drawRect(0, 0, width, height, OVERLAY_COLOR);
 
         drawPanel(leftPanelX, leftPanelY, leftPanelWidth, leftPanelHeight);
-        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, centerPanelHeight);
         drawPanel(runePanelX, runePanelY, runePanelWidth, runePanelHeight);
         drawPanel(navPanelX, navPanelY, navPanelWidth, navPanelHeight);
 
@@ -875,11 +848,10 @@ public class CardsGuiScreen extends GuiScreen {
     public void addCardFromServer(int slot, int cardIndex, int layer, boolean animate) {
         if (slot < 0 || slot >= STORAGE_SLOT_COUNT) return;
 
-        if (slots[slot] == null) slots[slot] = new ArrayList<>();
-        slots[slot].add(new CardData(cardIndex, layer));
+        inventory.set(slot, cardIndex, layer);
 
-        if (animate && cardIndex >= 0 && cardIndex < VISIBLE_RUNE_SLOTS) {
-            int[] pos = getRuneSlotPosition(cardIndex);
+        if (animate && cardIndex >= 0 && cardIndex < CARD_ICONS.length) {
+            int[] pos = getRuneSlotPosition(slot);
             flyingCards.add(new FlyingCard(
                     centerPanelX + centerPanelWidth / 2.0D,
                     centerPanelY + centerPanelHeight - scaled(45, 24),
@@ -895,10 +867,7 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     public void clearCards() {
-        for (int i = 0; i < STORAGE_SLOT_COUNT; i++) {
-            if (slots[i] == null) slots[i] = new ArrayList<>();
-            else slots[i].clear();
-        }
+        inventory.clear();
         flyingCards.clear();
         CustomGuiMod.logger.info("Руны очищены на клиенте");
     }
