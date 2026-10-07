@@ -3,12 +3,12 @@ package com.example.customguimod;
 final class EarthRuneCatalogTest {
     static void run() {
         check(EarthRuneCatalog.size() == 26, "The reference must define all 26 positions");
-        String[] expected = {"Булава", "Булава", "Булава", "Булава",
-                "Накидка вора", "Накидка вора", "Накидка вора", "Лесной дух", "Щит", "Щит",
-                "Низший голем", "Речной дракончик", "Речной дракончик",
-                "Энт-пугатель", "Энт-пугатель", "Энт-пугатель", "Энт-пугатель",
-                "Хижина", "Хижина", "Хижина", "Посох друида", "Посох друида",
-                "Книга земли", "Книга земли", "Книга земли", "Чудо"};
+        String[] expected = {"Каменный молот", "Каменный молот", "Каменный молот", "Каменный молот",
+                "Теневой клинок", "Теневой клинок", "Теневой клинок", "Сердце леса", "Печать кузнеца", "Печать кузнеца",
+                "Сердце голема", "Мшистый осколок", "Мшистый осколок",
+                "Древний корень", "Древний корень", "Древний корень", "Древний корень",
+                "Обсидиановый шип", "Обсидиановый шип", "Обсидиановый шип", "Семя древолеса", "Семя древолеса",
+                "Треснувшая печать", "Треснувшая печать", "Треснувшая печать", "Золотой самородок"};
         RuneInventory inventory = new RuneInventory();
         for (int slot = 0; slot < expected.length; slot++) {
             check(EarthRuneCatalog.at(slot).name.equals(expected[slot]), "Reference order differs at " + slot);
@@ -24,7 +24,7 @@ final class EarthRuneCatalogTest {
         check(EarthRuneCatalog.iconIndex(25) == 10, "Miracle needs its own resource icon");
         inventory.clear();
         check(inventory.ownedCatalogSlotCount() == 0, "Changing elements must clear owned positions");
-        check(EarthRuneCatalog.at(0).name.equals("Булава"), "Definitions must remain visible without ownership");
+        check(EarthRuneCatalog.at(0).name.equals("Каменный молот"), "Definitions must remain visible without ownership");
         check(EarthRuneCatalog.at(11).type.equals("Клик / Земля"), "Dragon type must follow the reference");
         check(EarthRuneCatalog.at(17).type.equals("Земля"), "Hut belongs to earth damage");
         check(EarthRuneCatalog.at(25).type.equals("Ресурс"), "Miracle belongs to resources");

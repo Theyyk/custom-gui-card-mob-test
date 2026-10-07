@@ -49,9 +49,9 @@ public class CardsGuiScreen extends GuiScreen {
     private static final int CLOSE_BUTTON_ID = 299;
 
     private static final String[] CARD_NAMES = {
-            "Булава", "Накидка вора", "Лесной дух", "Щит",
-            "Низший голем", "Речной дракончик", "Энт-пугатель",
-            "Хижина", "Посох друида", "Книга земли"
+            "Каменный молот", "Теневой клинок", "Сердце леса", "Печать кузнеца",
+            "Сердце голема", "Мшистый осколок", "Древний корень",
+            "Обсидиановый шип", "Семя древолеса", "Треснувшая печать"
     };
 
     private static final String[] RUNE_TYPES = {
