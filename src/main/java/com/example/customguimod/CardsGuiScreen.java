@@ -94,6 +94,7 @@ public class CardsGuiScreen extends GuiScreen {
     private int guiWidth;
     private int guiHeight;
     private int headerHeight;
+    private boolean compactLayout;
 
     private int leftPanelX;
     private int leftPanelY;
@@ -193,7 +194,7 @@ public class CardsGuiScreen extends GuiScreen {
             }
 
             String label = displayString;
-            int max = Math.max(1, width - 8);
+            int max = Math.max(1, width - 6);
             if (mc.fontRenderer.getStringWidth(label) > max) {
                 label = mc.fontRenderer.trimStringToWidth(label, max);
             }
@@ -257,7 +258,9 @@ public class CardsGuiScreen extends GuiScreen {
         int buyHeight = 21;
         int bottom = centerPanelY + centerPanelHeight - pad;
 
-        int amountY = bottom - amountHeight;
+        int amountRows = compactLayout ? 2 : 1;
+        int amountBlockHeight = amountRows * amountHeight + (amountRows - 1) * 2;
+        int amountY = bottom - amountBlockHeight;
         int buyY = amountY - buyHeight - 4;
 
         buttonList.add(new CristalixButton(
@@ -269,20 +272,52 @@ public class CardsGuiScreen extends GuiScreen {
                 "Купить руну"
         ));
 
-        String[] amountLabels = {"x1", "x5", "x10", "x100", "xВсе"};
-        int amountGap = 2;
-        int amountButtonWidth = Math.max(12,
-                (buttonWidth - amountGap * (amountLabels.length - 1)) / amountLabels.length);
+        String[] labels = compactLayout
+                ? new String[]{"1", "5", "10", "100", "Все"}
+                : new String[]{"x1", "x5", "x10", "x100", "xВсе"};
 
-        for (int i = 0; i < amountLabels.length; i++) {
-            buttonList.add(new CristalixButton(
-                    AMOUNT_BUTTON_START_ID + i,
-                    buttonX + i * (amountButtonWidth + amountGap),
-                    amountY,
-                    amountButtonWidth,
-                    amountHeight,
-                    amountLabels[i]
-            ));
+        if (compactLayout) {
+            int gap = 2;
+            int topCount = 3;
+            int topWidth = (buttonWidth - gap * (topCount - 1)) / topCount;
+            for (int i = 0; i < topCount; i++) {
+                buttonList.add(new CristalixButton(
+                        AMOUNT_BUTTON_START_ID + i,
+                        buttonX + i * (topWidth + gap),
+                        amountY,
+                        topWidth,
+                        amountHeight,
+                        labels[i]
+                ));
+            }
+
+            int bottomCount = 2;
+            int bottomWidth = (buttonWidth - gap) / bottomCount;
+            for (int i = 0; i < bottomCount; i++) {
+                int index = i + topCount;
+                buttonList.add(new CristalixButton(
+                        AMOUNT_BUTTON_START_ID + index,
+                        buttonX + i * (bottomWidth + gap),
+                        amountY + amountHeight + 2,
+                        bottomWidth,
+                        amountHeight,
+                        labels[index]
+                ));
+            }
+        } else {
+            int gap = 2;
+            int amountButtonWidth = Math.max(12,
+                    (buttonWidth - gap * (labels.length - 1)) / labels.length);
+            for (int i = 0; i < labels.length; i++) {
+                buttonList.add(new CristalixButton(
+                        AMOUNT_BUTTON_START_ID + i,
+                        buttonX + i * (amountButtonWidth + gap),
+                        amountY,
+                        amountButtonWidth,
+                        amountHeight,
+                        labels[i]
+                ));
+            }
         }
 
         rebuildElementButtons();
@@ -310,20 +345,20 @@ public class CardsGuiScreen extends GuiScreen {
             int desired = Math.max(38, fontRenderer.getStringWidth(name) + 14);
             int remaining = count - i;
             int maxForThis = Math.max(28, (availableRight - x - gap * (remaining - 1)) / remaining);
-            int width = Math.min(desired, maxForThis);
+            int buttonWidth = Math.min(desired, maxForThis);
 
-            if (x + width > availableRight) break;
+            if (x + buttonWidth > availableRight) break;
 
             buttonList.add(new ElementButton(
                     ELEMENT_BUTTON_START_ID + i,
                     x,
                     y,
-                    width,
+                    buttonWidth,
                     19,
                     name,
                     i == activeDeck
             ));
-            x += width + gap;
+            x += buttonWidth + gap;
         }
     }
 
@@ -370,17 +405,23 @@ public class CardsGuiScreen extends GuiScreen {
 
         guiWidth = Math.min(availableWidth, GUI_MAX_WIDTH);
         guiHeight = Math.min(availableHeight, GUI_MAX_HEIGHT);
+        compactLayout = guiWidth < 700 || guiHeight < 390;
 
         guiX = (width - guiWidth) / 2;
         guiY = (height - guiHeight) / 2;
 
-        headerHeight = Math.max(25, Math.min(31, guiHeight / 12));
+        headerHeight = compactLayout ? 24 : Math.max(25, Math.min(31, guiHeight / 12));
         int contentY = guiY + headerHeight;
         int contentHeight = Math.max(80, guiHeight - headerHeight);
         int usableWidth = Math.max(1, guiWidth - PANEL_GAP * 2);
 
-        leftPanelWidth = usableWidth * 19 / 100;
-        centerPanelWidth = usableWidth * 26 / 100;
+        if (compactLayout) {
+            leftPanelWidth = usableWidth * 18 / 100;
+            centerPanelWidth = usableWidth * 27 / 100;
+        } else {
+            leftPanelWidth = usableWidth * 19 / 100;
+            centerPanelWidth = usableWidth * 26 / 100;
+        }
         runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
 
         leftPanelX = guiX;
@@ -400,7 +441,7 @@ public class CardsGuiScreen extends GuiScreen {
 
     private void updateRuneGridLayout() {
         int horizontalPadding = Math.max(4, Math.min(PANEL_PADDING, runePanelWidth / 30));
-        int topReserved = 60;
+        int topReserved = compactLayout ? 58 : 60;
         int bottomPadding = 10;
         int availableWidth = Math.max(1, runePanelWidth - horizontalPadding * 2);
         int availableHeight = Math.max(1, runePanelHeight - topReserved - bottomPadding);
@@ -472,10 +513,18 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawHeader() {
-        int y = guiY + 5;
-        drawResourceChip(guiX + guiWidth - 255, y, 80, COIN_ICON, String.valueOf(ClientPlayerStats.getCoins()));
-        drawResourceChip(guiX + guiWidth - 171, y, 80, CRYSTAL_ICON, String.valueOf(ClientPlayerStats.getCrystals()));
-        drawResourceChip(guiX + guiWidth - 87, y, 83, DAMAGE_ICON, "+" + ClientPlayerStats.getTotalDamage());
+        int chipGap = compactLayout ? 3 : 4;
+        int chipWidth = compactLayout ? Math.max(52, Math.min(76, (guiWidth - chipGap * 2) / 3)) : 80;
+        int damageWidth = compactLayout ? chipWidth : 83;
+        int totalWidth = chipWidth * 2 + damageWidth + chipGap * 2;
+        int x = guiX + guiWidth - totalWidth;
+        int y = guiY + (compactLayout ? 2 : 5);
+
+        drawResourceChip(x, y, chipWidth, COIN_ICON, String.valueOf(ClientPlayerStats.getCoins()));
+        x += chipWidth + chipGap;
+        drawResourceChip(x, y, chipWidth, CRYSTAL_ICON, String.valueOf(ClientPlayerStats.getCrystals()));
+        x += chipWidth + chipGap;
+        drawResourceChip(x, y, damageWidth, DAMAGE_ICON, "+" + ClientPlayerStats.getTotalDamage());
     }
 
     private void drawResourceChip(int x, int y, int w, ItemStack icon, String value) {
@@ -488,54 +537,86 @@ public class CardsGuiScreen extends GuiScreen {
         renderItem.renderItemIntoGUI(icon, x + 3, y + 2);
         GlStateManager.popMatrix();
 
-        fontRenderer.drawStringWithShadow(value, x + 22, y + 6, TEXT_COLOR);
+        int textX = x + 22;
+        int maxText = Math.max(1, w - 25);
+        String fitted = value;
+        if (fontRenderer.getStringWidth(fitted) > maxText) {
+            fitted = fontRenderer.trimStringToWidth(fitted, maxText);
+        }
+        fontRenderer.drawStringWithShadow(fitted, textX, y + 6, TEXT_COLOR);
     }
 
     private void drawLeftPanelContent() {
         int x = leftPanelX + PANEL_PADDING;
-        int topHeight = Math.max(110, leftPanelHeight * 58 / 100);
-        int sectionWidth = leftPanelWidth - PANEL_PADDING * 2;
+        int sectionWidth = Math.max(20, leftPanelWidth - PANEL_PADDING * 2);
+        int topHeight = compactLayout
+                ? Math.max(98, leftPanelHeight * 57 / 100)
+                : Math.max(110, leftPanelHeight * 58 / 100);
 
         drawSection(x, leftPanelY + PANEL_PADDING, sectionWidth, topHeight - PANEL_PADDING);
         int y = leftPanelY + PANEL_PADDING + 9;
         int textX = x + 8;
+        int textWidth = Math.max(10, sectionWidth - 16);
 
-        fontRenderer.drawStringWithShadow("СТАТИСТИКА", textX, y, TEXT_COLOR);
+        drawFittedString("СТАТИСТИКА", textX, y, textWidth, TEXT_COLOR, true);
         y += 17;
         drawDivider(x + 6, y, sectionWidth - 12);
         y += 8;
 
-        drawStatLine(textX, y, "Монеты", String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D);
+        drawStatLine(textX, y, "Монеты", String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D, textWidth);
         y += 14;
-        drawStatLine(textX, y, "Кристаллы", String.valueOf(ClientPlayerStats.getCrystals()), 0xFF56D7E8);
+        drawStatLine(textX, y, "Кристаллы", String.valueOf(ClientPlayerStats.getCrystals()), 0xFF56D7E8, textWidth);
         y += 14;
-        drawStatLine(textX, y, "Урон", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272);
+        drawStatLine(textX, y, "Урон", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textWidth);
         y += 20;
 
-        fontRenderer.drawString("ЭФФЕКТЫ", textX, y, MUTED_TEXT_COLOR);
+        drawFittedString("ЭФФЕКТЫ", textX, y, textWidth, MUTED_TEXT_COLOR, false);
         y += 14;
-        fontRenderer.drawString("Будут добавлены", textX, y, MUTED_TEXT_COLOR);
-        y += 11;
-        fontRenderer.drawString("в следующих версиях", textX, y, MUTED_TEXT_COLOR);
+        if (!compactLayout || textWidth >= 75) {
+            drawFittedString("Будут добавлены", textX, y, textWidth, MUTED_TEXT_COLOR, false);
+            y += 11;
+            drawFittedString("в следующих версиях", textX, y, textWidth, MUTED_TEXT_COLOR, false);
+        } else {
+            drawFittedString("Позже", textX, y, textWidth, MUTED_TEXT_COLOR, false);
+        }
 
         int bottomY = leftPanelY + PANEL_PADDING + topHeight + PANEL_GAP;
         int bottomHeight = leftPanelY + leftPanelHeight - PANEL_PADDING - bottomY;
         if (bottomHeight > 35) {
             drawSection(x, bottomY, sectionWidth, bottomHeight);
-            fontRenderer.drawStringWithShadow("ВЫБРАННАЯ СБОРКА", textX, bottomY + 9, TEXT_COLOR);
+            drawFittedString("ВЫБРАННАЯ СБОРКА", textX, bottomY + 9, textWidth, TEXT_COLOR, true);
             drawDivider(x + 6, bottomY + 25, sectionWidth - 12);
-            fontRenderer.drawString("Система эффектов", textX, bottomY + 35, MUTED_TEXT_COLOR);
-            fontRenderer.drawString("будет подключена позже", textX, bottomY + 47, MUTED_TEXT_COLOR);
+            if (compactLayout) {
+                drawFittedString("Эффекты позже", textX, bottomY + 35, textWidth, MUTED_TEXT_COLOR, false);
+            } else {
+                drawFittedString("Система эффектов", textX, bottomY + 35, textWidth, MUTED_TEXT_COLOR, false);
+                drawFittedString("будет подключена позже", textX, bottomY + 47, textWidth, MUTED_TEXT_COLOR, false);
+            }
         }
+    }
+
+    private void drawFittedString(String text, int x, int y, int maxWidth, int color, boolean shadow) {
+        String fitted = text;
+        if (fontRenderer.getStringWidth(fitted) > maxWidth) {
+            fitted = fontRenderer.trimStringToWidth(fitted, maxWidth);
+        }
+        if (shadow) fontRenderer.drawStringWithShadow(fitted, x, y, color);
+        else fontRenderer.drawString(fitted, x, y, color);
     }
 
     private void drawDivider(int x, int y, int w) {
         drawRect(x, y, x + Math.max(1, w), y + 1, PANEL_BORDER_COLOR);
     }
 
-    private void drawStatLine(int x, int y, String name, String value, int color) {
-        fontRenderer.drawString(name, x, y, color);
-        int valueX = leftPanelX + leftPanelWidth - PANEL_PADDING * 2 - fontRenderer.getStringWidth(value);
+    private void drawStatLine(int x, int y, String name, String value, int color, int availableWidth) {
+        int valueWidth = fontRenderer.getStringWidth(value);
+        int valueX = x + availableWidth - valueWidth;
+        int nameMaxWidth = Math.max(8, valueX - x - 4);
+        String fittedName = name;
+        if (fontRenderer.getStringWidth(fittedName) > nameMaxWidth) {
+            fittedName = fontRenderer.trimStringToWidth(fittedName, nameMaxWidth);
+        }
+        fontRenderer.drawString(fittedName, x, y, color);
         fontRenderer.drawString(value, valueX, y, TEXT_COLOR);
     }
 
@@ -543,13 +624,14 @@ public class CardsGuiScreen extends GuiScreen {
         int innerX = centerPanelX + PANEL_PADDING;
         int innerW = centerPanelWidth - PANEL_PADDING * 2;
 
-        fontRenderer.drawStringWithShadow("СНАРЯЖЕНИЕ", innerX, centerPanelY + PANEL_PADDING, TEXT_COLOR);
+        drawFittedString("СНАРЯЖЕНИЕ", innerX, centerPanelY + PANEL_PADDING,
+                Math.max(20, innerW), TEXT_COLOR, true);
         drawDivider(innerX, centerPanelY + 23, innerW);
 
         int slotSize = Math.max(14, Math.min(28, centerPanelWidth / 7));
-        int gap = 4;
+        int gap = compactLayout ? 3 : 4;
         int previewTop = centerPanelY + 33;
-        int controlsReserved = 64;
+        int controlsReserved = compactLayout ? 84 : 64;
         int previewBottom = centerPanelY + centerPanelHeight - controlsReserved - 10;
         int cx = centerPanelX + centerPanelWidth / 2;
 
@@ -561,10 +643,12 @@ public class CardsGuiScreen extends GuiScreen {
 
         int sideY1 = previewTop + slotSize + 18;
         int sideY2 = sideY1 + slotSize + gap;
-        drawEquipmentSlot(innerX + 4, sideY1, slotSize);
-        drawEquipmentSlot(innerX + 4, sideY2, slotSize);
-        drawEquipmentSlot(centerPanelX + centerPanelWidth - PANEL_PADDING - 4 - slotSize, sideY1, slotSize);
-        drawEquipmentSlot(centerPanelX + centerPanelWidth - PANEL_PADDING - 4 - slotSize, sideY2, slotSize);
+        if (!compactLayout || centerPanelWidth >= 175) {
+            drawEquipmentSlot(innerX + 4, sideY1, slotSize);
+            drawEquipmentSlot(innerX + 4, sideY2, slotSize);
+            drawEquipmentSlot(centerPanelX + centerPanelWidth - PANEL_PADDING - 4 - slotSize, sideY1, slotSize);
+            drawEquipmentSlot(centerPanelX + centerPanelWidth - PANEL_PADDING - 4 - slotSize, sideY2, slotSize);
+        }
 
         int bottomY = Math.max(sideY2 + slotSize + 8, previewBottom - slotSize);
         for (int i = 0; i < 4; i++) {
@@ -572,10 +656,10 @@ public class CardsGuiScreen extends GuiScreen {
         }
 
         Minecraft mc = Minecraft.getMinecraft();
-        if (mc.player != null && bottomY - previewTop > 60) {
+        if (mc.player != null && bottomY - previewTop > 55) {
             int entityBottom = bottomY - 6;
-            int previewScale = Math.max(16, Math.min(42,
-                    Math.min(centerPanelWidth / 4, Math.max(16, (bottomY - previewTop) / 5))));
+            int previewScale = Math.max(14, Math.min(42,
+                    Math.min(centerPanelWidth / 4, Math.max(14, (bottomY - previewTop) / 5))));
 
             GuiInventory.drawEntityOnScreen(
                     cx,
@@ -588,7 +672,7 @@ public class CardsGuiScreen extends GuiScreen {
         }
 
         String selected = "Покупка: " + (buyAmount == Integer.MAX_VALUE ? "xВсе" : "x" + buyAmount);
-        int selectedY = centerPanelY + centerPanelHeight - 67;
+        int selectedY = centerPanelY + centerPanelHeight - (compactLayout ? 87 : 67);
         int selectedX = cx - fontRenderer.getStringWidth(selected) / 2;
         fontRenderer.drawString(selected, selectedX, selectedY, MUTED_TEXT_COLOR);
     }
@@ -607,7 +691,7 @@ public class CardsGuiScreen extends GuiScreen {
         int titleY = runePanelY + PANEL_PADDING;
 
         fontRenderer.drawStringWithShadow("РУНЫ", titleX, titleY, TEXT_COLOR);
-        String countText = "26 слотов";
+        String countText = compactLayout ? "26" : "26 слотов";
         fontRenderer.drawString(countText,
                 runePanelX + runePanelWidth - PANEL_PADDING - fontRenderer.getStringWidth(countText),
                 titleY,
