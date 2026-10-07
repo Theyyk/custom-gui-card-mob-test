@@ -69,7 +69,8 @@ public class CardsGuiScreen extends GuiScreen {
             new ItemStack(Blocks.LEAVES),
             new ItemStack(Items.BED),
             new ItemStack(Items.STICK),
-            new ItemStack(Items.BOOK)
+            new ItemStack(Items.BOOK),
+            new ItemStack(Items.GOLD_NUGGET)
     };
 
     private static final int[] CARD_STATS = {
@@ -712,15 +713,9 @@ public class CardsGuiScreen extends GuiScreen {
         RuneInventory.Entry rune = getRuneForVisualSlot(visualIndex);
         if (rune == null) return;
         drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(rune.layer));
-        if (rune.cardIndex >= 0 && rune.cardIndex < CARD_ICONS.length && runeSlotWidth >= 8) {
-            int iconSize = Math.max(4, Math.min(16, runeSlotWidth - 6));
-            GlStateManager.pushMatrix();
-            GlStateManager.translate(x + (runeSlotWidth - iconSize) / 2.0F,
-                    y + (runeSlotHeight - iconSize) / 2.0F, 0);
-            GlStateManager.scale(iconSize / 16.0F, iconSize / 16.0F, 1);
-            GlStateManager.enableRescaleNormal();
-            renderItem.renderItemIntoGUI(CARD_ICONS[rune.cardIndex], 0, 0);
-            GlStateManager.popMatrix();
+        if (rune.cardIndex >= 0 && rune.cardIndex < CARD_ICONS.length) {
+            String type = rune.cardIndex < RUNE_TYPES.length ? RUNE_TYPES[rune.cardIndex] : "Ресурс";
+            drawRuneIcon(CARD_ICONS[rune.cardIndex], x, y, runeSlotWidth, runeSlotHeight, type);
         }
     }
 
@@ -733,39 +728,66 @@ public class CardsGuiScreen extends GuiScreen {
                 hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
         drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
         RuneInventory.Entry owned = inventory.get(slot);
-        if (owned != null) drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(owned.layer));
-        drawEarthDefinition(definition, x, y, runeSlotWidth, runeSlotHeight, owned != null);
-    }
-
-    private void drawEarthDefinition(EarthRuneCatalog.Definition definition, int x, int y, int w, int h, boolean owned) {
-        int split = definition.name.indexOf(' ');
-        if (split < 0) split = definition.name.indexOf('-');
-        boolean wrap = h >= 28 && split > 0;
-        int lines = wrap ? 3 : 2;
-        int lineHeight = Math.max(4, Math.min(10, (h - 2) / lines));
-        int textY = y + Math.max(1, (h - lines * lineHeight) / 2);
-        int nameColor = owned ? TEXT_COLOR : 0xFFABB2B9;
-        if (wrap) {
-            int end = definition.name.charAt(split) == '-' ? split + 1 : split;
-            drawSlotLabel(definition.name.substring(0, end), x + 2, textY, w - 4, lineHeight, nameColor);
-            drawSlotLabel(definition.name.substring(split + 1), x + 2, textY + lineHeight, w - 4, lineHeight, nameColor);
-        } else {
-            drawSlotLabel(definition.name, x + 2, textY, w - 4, lineHeight, nameColor);
+        if (owned == null) return;
+        drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(owned.layer));
+        int iconIndex = EarthRuneCatalog.iconIndex(slot);
+        if (iconIndex >= 0 && iconIndex < CARD_ICONS.length) {
+            drawRuneIcon(CARD_ICONS[iconIndex], x, y, runeSlotWidth, runeSlotHeight, definition.type);
         }
-        drawSlotLabel(definition.type, x + 2, textY + (lines - 1) * lineHeight, w - 4, lineHeight, MUTED_TEXT_COLOR);
     }
 
-    private void drawSlotLabel(String text, int x, int y, int availableWidth, int lineHeight, int color) {
-        float scale = Math.min(1.0F, lineHeight / 9.0F);
-        float fitScale = Math.max(1, availableWidth) / (float) Math.max(1, fontRenderer.getStringWidth(text));
-        if (fitScale >= 0.5F) scale = Math.min(scale, fitScale);
-        int textWidth = Math.max(1, Math.round(Math.max(1, availableWidth) / scale));
-        String label = fontRenderer.trimStringToWidth(text, textWidth);
+    private void drawRuneIcon(ItemStack icon, int x, int y, int w, int h, String type) {
+        int badgeSize = Math.max(3, Math.min(8, Math.min(w, h) / 5));
+        int iconSize = Math.max(1, Math.min(24, Math.min(w - 4, h - badgeSize - 3)));
+        int iconX = x + (w - iconSize) / 2;
+        int iconY = y + Math.max(1, Math.min((h - iconSize) / 2, h - badgeSize - iconSize - 3));
         GlStateManager.pushMatrix();
-        GlStateManager.translate(x, y, 0);
-        GlStateManager.scale(scale, scale, 1);
-        fontRenderer.drawString(label, 0, 0, color);
+        GlStateManager.translate(iconX, iconY, 0);
+        GlStateManager.scale(iconSize / 16.0F, iconSize / 16.0F, 1);
+        GlStateManager.enableRescaleNormal();
+        renderItem.renderItemIntoGUI(icon, 0, 0);
         GlStateManager.popMatrix();
+        drawRuneTypeBadge(type, x + 2, y + h - badgeSize - 2, badgeSize, w - 4);
+    }
+
+    private void drawRuneTypeBadge(String type, int x, int y, int size, int availableWidth) {
+        boolean hybrid = "Клик / Земля".equals(type);
+        int glyphSize = hybrid ? Math.max(2, Math.min(size, (availableWidth - 1) / 2)) : size;
+        int badgeWidth = hybrid ? glyphSize * 2 + 1 : glyphSize;
+        drawRect(x - 1, y - 1, x + badgeWidth + 1, y + glyphSize + 1, 0xD012161B);
+        drawTypeGlyph(hybrid ? "Клик" : type, x, y, glyphSize);
+        if (hybrid) drawTypeGlyph("Земля", x + glyphSize + 1, y, glyphSize);
+    }
+
+    private void drawTypeGlyph(String type, int x, int y, int size) {
+        String[] rows;
+        int color;
+        if ("Клик".equals(type)) {
+            rows = new String[]{"0001100", "0011000", "0110000", "1111110", "0001100", "0011000", "0110000"};
+            color = 0xFFFFD34E;
+        } else if ("Земля".equals(type)) {
+            rows = new String[]{"0000011", "0001111", "0011110", "0111100", "1111000", "1100000", "1000000"};
+            color = 0xFF65D55E;
+        } else if ("Усиление".equals(type)) {
+            rows = new String[]{"0001000", "0011100", "0111110", "1111111", "0001000", "0001000", "0001000"};
+            color = 0xFF73BEFF;
+        } else if ("Вода".equals(type)) {
+            rows = new String[]{"0001000", "0001000", "0011100", "0011100", "0111110", "0111110", "0011100"};
+            color = 0xFF53CBED;
+        } else {
+            rows = new String[]{"0011100", "0111110", "1111111", "1101011", "1111111", "0111110", "0011100"};
+            color = 0xFFFFB84D;
+        }
+        for (int row = 0; row < 7; row++) {
+            for (int col = 0; col < 7; col++) {
+                if (rows[row].charAt(col) != '1') continue;
+                int left = x + col * size / 7;
+                int right = x + (col + 1) * size / 7;
+                int top = y + row * size / 7;
+                int bottom = y + (row + 1) * size / 7;
+                if (right > left && bottom > top) drawRect(left, top, right, bottom, color);
+            }
+        }
     }
 
     private void drawRankCorners(int x, int y, int w, int h, int color) {
@@ -800,6 +822,7 @@ public class CardsGuiScreen extends GuiScreen {
                     || mouseY < y || mouseY >= y + runeSlotHeight) continue;
 
             if (activeDeck == 0) {
+                if (inventory.get(i) == null) return;
                 EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(i);
                 List<String> tooltip = new ArrayList<>();
                 tooltip.add("§b" + definition.name);
@@ -865,7 +888,10 @@ public class CardsGuiScreen extends GuiScreen {
 
         if (activeDeck == 0) {
             EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(card.cardIndex);
-            if (definition != null) drawEarthDefinition(definition, x - w / 2, y - h / 2, w, h, true);
+            int iconIndex = EarthRuneCatalog.iconIndex(card.cardIndex);
+            if (definition != null && iconIndex >= 0 && iconIndex < CARD_ICONS.length) {
+                drawRuneIcon(CARD_ICONS[iconIndex], x - w / 2, y - h / 2, w, h, definition.type);
+            }
             return;
         }
         if (card.cardIndex >= 0 && card.cardIndex < CARD_ICONS.length && w >= 18 && h >= 18) {

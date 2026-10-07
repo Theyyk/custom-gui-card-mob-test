@@ -13,12 +13,15 @@ final class EarthRuneCatalogTest {
         for (int slot = 0; slot < expected.length; slot++) {
             check(EarthRuneCatalog.at(slot).name.equals(expected[slot]), "Reference order differs at " + slot);
             check(!EarthRuneCatalog.at(slot).type.isEmpty(), "Every position needs a type");
+            check(EarthRuneCatalog.iconIndex(slot) >= 0 && EarthRuneCatalog.iconIndex(slot) <= 10, "Every rune needs a placeholder icon");
             inventory.set(slot, slot, slot % 3 + 1);
         }
         check(inventory.ownedCatalogSlotCount() == 26, "Repeated names must occupy distinct positions");
         check(inventory.get(0).layer == 1 && inventory.get(1).layer == 2,
                 "Two Bulavas must keep their own ownership and ranks");
         check(inventory.get(25).cardIndex == 25, "The last rune must remain a distinct purchased position");
+        check(EarthRuneCatalog.iconIndex(0) == EarthRuneCatalog.iconIndex(3), "Repeated Bulavas reuse the same item icon");
+        check(EarthRuneCatalog.iconIndex(25) == 10, "Miracle needs its own resource icon");
         inventory.clear();
         check(inventory.ownedCatalogSlotCount() == 0, "Changing elements must clear owned positions");
         check(EarthRuneCatalog.at(0).name.equals("Булава"), "Definitions must remain visible without ownership");
