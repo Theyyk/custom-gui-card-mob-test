@@ -17,7 +17,7 @@ import java.util.List;
 public class CardsGuiScreen extends GuiScreen {
 
     private static final int STORAGE_SLOT_COUNT = RuneInventory.CAPACITY;
-    private static final int VISIBLE_RUNE_SLOTS = STORAGE_SLOT_COUNT;
+    private static final int VISIBLE_RUNE_SLOTS = RuneInventory.BOOST_TYPE_COUNT;
 
     private static final int GUI_MAX_WIDTH = 1240;
     private static final int GUI_MAX_HEIGHT = 620;
@@ -120,7 +120,7 @@ public class CardsGuiScreen extends GuiScreen {
 
     private int purchaseTop;
     private int runeColumns = 10;
-    private int runeRows = 5;
+    private int runeRows = 3;
     private int runeSlotWidth;
     private int runeSlotHeight;
     private int runeSlotGap;
@@ -650,7 +650,7 @@ public class CardsGuiScreen extends GuiScreen {
         int titleX = runePanelX + pad;
         int titleY = runePanelY + pad;
         drawFittedString("РУНЫ", titleX, titleY, runePanelWidth / 2, TEXT_COLOR, true);
-        String count = inventory.occupiedCount() + " / " + STORAGE_SLOT_COUNT;
+        String count = inventory.occupiedTypeCount() + " / " + VISIBLE_RUNE_SLOTS;
         fontRenderer.drawString(count,
                 runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
@@ -666,7 +666,7 @@ public class CardsGuiScreen extends GuiScreen {
         }
         int footerY = runePanelY + runePanelHeight - scaled(18, 12);
         drawDivider(titleX, footerY - scaled(6, 3), runePanelWidth - pad * 2);
-        drawFittedString("Слоты коллекции", titleX, footerY,
+        drawFittedString("Коллекция рун", titleX, footerY,
                 runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
     }
 
@@ -688,9 +688,6 @@ public class CardsGuiScreen extends GuiScreen {
             GlStateManager.enableRescaleNormal();
             renderItem.renderItemIntoGUI(CARD_ICONS[rune.cardIndex], 0, 0);
             GlStateManager.popMatrix();
-        }
-        if (runeSlotWidth >= 24) {
-            fontRenderer.drawString("1", x + runeSlotWidth - 8, y + runeSlotHeight - 10, TEXT_COLOR);
         }
     }
 
@@ -714,7 +711,7 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private RuneInventory.Entry getRuneForVisualSlot(int visualIndex) {
-        return inventory.get(visualIndex);
+        return inventory.getBoost(visualIndex);
     }
 
     private void drawRuneTooltip(int mouseX, int mouseY) {
@@ -851,7 +848,7 @@ public class CardsGuiScreen extends GuiScreen {
         inventory.set(slot, cardIndex, layer);
 
         if (animate && cardIndex >= 0 && cardIndex < CARD_ICONS.length) {
-            int[] pos = getRuneSlotPosition(slot);
+            int[] pos = getRuneSlotPosition(cardIndex);
             flyingCards.add(new FlyingCard(
                     centerPanelX + centerPanelWidth / 2.0D,
                     centerPanelY + centerPanelHeight - scaled(45, 24),
