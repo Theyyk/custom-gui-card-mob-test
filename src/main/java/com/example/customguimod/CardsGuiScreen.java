@@ -24,6 +24,16 @@ public class CardsGuiScreen extends GuiScreen {
     private static final int CARD_HEIGHT = 50;
     private static final int CARD_GAP = 4;
 
+    private static final int GUI_MAX_WIDTH = 900;
+    private static final int GUI_MAX_HEIGHT = 500;
+    private static final int GUI_OUTER_MARGIN = 10;
+    private static final int PANEL_GAP = 6;
+
+    private static final int OVERLAY_COLOR = 0x88000000;
+    private static final int PANEL_BG_COLOR = 0xC0181E26;
+    private static final int PANEL_BORDER_COLOR = 0xCC3B5366;
+    private static final int PANEL_INNER_BORDER_COLOR = 0x663B5366;
+
     private static final int DECK_BUTTON_START_ID = 100;
     private static final int MAX_DECKS = 9;
     private static final int DECK_BUTTON_WIDTH = 30;
@@ -35,6 +45,26 @@ public class CardsGuiScreen extends GuiScreen {
     private final Random random = new Random();
     private final List<String> deckNames = new ArrayList<>();
     private int activeDeck = 0;
+
+    private int guiX;
+    private int guiY;
+    private int guiWidth;
+    private int guiHeight;
+
+    private int leftPanelX;
+    private int leftPanelY;
+    private int leftPanelWidth;
+    private int leftPanelHeight;
+
+    private int centerPanelX;
+    private int centerPanelY;
+    private int centerPanelWidth;
+    private int centerPanelHeight;
+
+    private int runePanelX;
+    private int runePanelY;
+    private int runePanelWidth;
+    private int runePanelHeight;
 
     private static final String[] CARD_NAMES = {
             "Булава", "Накидка вора", "Лесной дух", "Щит",
@@ -261,6 +291,50 @@ public class CardsGuiScreen extends GuiScreen {
                 startY + row * (CARD_HEIGHT + CARD_GAP)};
     }
 
+    private void updateLayout() {
+        int availableWidth = Math.max(1, this.width - GUI_OUTER_MARGIN * 2);
+        int availableHeight = Math.max(1, this.height - GUI_OUTER_MARGIN * 2);
+
+        guiWidth = Math.min(availableWidth, GUI_MAX_WIDTH);
+        guiHeight = Math.min(availableHeight, GUI_MAX_HEIGHT);
+
+        guiX = (this.width - guiWidth) / 2;
+        guiY = (this.height - guiHeight) / 2;
+
+        int contentY = guiY + 38;
+        int contentHeight = Math.max(40, guiHeight - 50);
+        int usableWidth = Math.max(1, guiWidth - PANEL_GAP * 2);
+
+        leftPanelWidth = usableWidth * 18 / 100;
+        centerPanelWidth = usableWidth * 23 / 100;
+        runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
+
+        leftPanelX = guiX;
+        leftPanelY = contentY;
+        leftPanelHeight = contentHeight;
+
+        centerPanelX = leftPanelX + leftPanelWidth + PANEL_GAP;
+        centerPanelY = contentY;
+        centerPanelHeight = contentHeight;
+
+        runePanelX = centerPanelX + centerPanelWidth + PANEL_GAP;
+        runePanelY = contentY;
+        runePanelHeight = contentHeight;
+    }
+
+    private void drawPanel(int x, int y, int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        drawRect(x, y, x + width, y + height, PANEL_BORDER_COLOR);
+        drawRect(x + 1, y + 1, x + width - 1, y + height - 1, PANEL_BG_COLOR);
+
+        if (width > 4 && height > 4) {
+            drawRect(x + 2, y + 2, x + width - 2, y + 3, PANEL_INNER_BORDER_COLOR);
+        }
+    }
+
     @Override
     public void updateScreen() {
         super.updateScreen();
@@ -273,6 +347,14 @@ public class CardsGuiScreen extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
+
+        updateLayout();
+        drawRect(0, 0, this.width, this.height, OVERLAY_COLOR);
+
+        drawPanel(leftPanelX, leftPanelY, leftPanelWidth, leftPanelHeight);
+        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, centerPanelHeight);
+        drawPanel(runePanelX, runePanelY, runePanelWidth, runePanelHeight);
+
         PlayerStatsHudRenderer.draw(Minecraft.getMinecraft(), this.width);
 
         for (int i = 0; i < SLOT_COUNT; i++) {
