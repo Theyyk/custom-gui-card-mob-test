@@ -14,7 +14,7 @@ apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
-version = '1.1.0'
+version = '1.1.1'
 group = 'com.example.customguimod'
 archivesBaseName = 'customguimod'
 
@@ -25,7 +25,7 @@ minecraft {
     // snapshot_YYYYMMDD   Snapshot are built nightly.
     // stable_#            Stables are built at the discretion of the MCP team.
     // Use non-default mappings at your own risk. they may not always work.
-    // Simply re-run your setup task after changing the mappings to update your workspace.
+    // Simply re-run your setup task after changing your workspace.
     //mappings channel: 'snapshot', version: '20171003-1.12'
     mappings channel: 'snapshot', version: '20171003-1.12'
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
@@ -47,7 +47,7 @@ minecraft {
 
         server {
 
-            // Recommended logging data for a userdev environment
+            // Recommended logging data for the console.
             property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
 
             // Recommended logging level for the console
@@ -75,7 +75,7 @@ dependencies {
     // provided 'com.mod-buildcraft:buildcraft:6.0.8:dev'
 
     // These dependencies get remapped to your current MCP mappings
-    // deobf 'com.mod-buildcraft:buildcraft:6.0.8:dev'
+    // deobf 'com.example:examplelib:1.0.0'
 
     // For more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
