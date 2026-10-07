@@ -3,6 +3,7 @@ package com.example.customguimod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderItem;
 import net.minecraft.init.Blocks;
@@ -12,39 +13,47 @@ import net.minecraft.item.ItemStack;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class CardsGuiScreen extends GuiScreen {
 
-    private static final int ROWS = 5;
-    private static final int COLS = 10;
-    private static final int SLOT_COUNT = ROWS * COLS;
-
-    private static final int CARD_WIDTH = 40;
-    private static final int CARD_HEIGHT = 50;
-    private static final int CARD_GAP = 4;
+    // Server-side storage is still the v1.1 50-slot card model.
+    // v1.2 presents it as a 26-slot rune collection without changing the server contract yet.
+    private static final int STORAGE_SLOT_COUNT = 50;
+    private static final int VISIBLE_RUNE_SLOTS = 26;
+    private static final int RUNE_COLUMNS = 13;
+    private static final int RUNE_ROWS = 2;
 
     private static final int GUI_MAX_WIDTH = 900;
     private static final int GUI_MAX_HEIGHT = 500;
     private static final int GUI_OUTER_MARGIN = 10;
     private static final int PANEL_GAP = 6;
+    private static final int PANEL_PADDING = 8;
 
     private static final int OVERLAY_COLOR = 0x88000000;
-    private static final int PANEL_BG_COLOR = 0xC0181E26;
-    private static final int PANEL_BORDER_COLOR = 0xCC3B5366;
-    private static final int PANEL_INNER_BORDER_COLOR = 0x663B5366;
+    private static final int PANEL_BG_COLOR = 0xD014181E;
+    private static final int PANEL_BORDER_COLOR = 0xCC29323C;
+    private static final int PANEL_INNER_BORDER_COLOR = 0x66465B70;
+    private static final int SLOT_BG_COLOR = 0xE014181D;
+    private static final int SLOT_BORDER_COLOR = 0xFF252D35;
+    private static final int SLOT_HOVER_COLOR = 0xFF3A4856;
+    private static final int SELECTED_COLOR = 0xFF2E72C7;
+    private static final int TEXT_COLOR = 0xFFE5E5E5;
+    private static final int MUTED_TEXT_COLOR = 0xFF7C838A;
 
-    private static final int DECK_BUTTON_START_ID = 100;
-    private static final int MAX_DECKS = 9;
-    private static final int DECK_BUTTON_WIDTH = 30;
-    private static final int DECK_BUTTON_HEIGHT = 20;
-    private static final int DECK_BUTTON_GAP = 3;
-    private static final ItemStack DECK_ICON = new ItemStack(Blocks.CHEST);
+    private static final int NORMAL_COLOR = 0xFF2E72C7;
+    private static final int SILVER_COLOR = 0xFFC4C8CE;
+    private static final int GOLD_COLOR = 0xFFFFC940;
 
-    private static List<CardData>[] slots = new List[SLOT_COUNT];
-    private final Random random = new Random();
+    private static final int BUY_BUTTON_ID = 0;
+    private static final int AMOUNT_BUTTON_START_ID = 1;
+    private static final int ELEMENT_BUTTON_START_ID = 100;
+    private static final int MAX_ELEMENTS = 8;
+
+    private static List<CardData>[] slots = new List[STORAGE_SLOT_COUNT];
     private final List<String> deckNames = new ArrayList<>();
     private int activeDeck = 0;
+    private int buyAmount = 1;
+    private static RenderItem renderItem;
 
     private int guiX;
     private int guiY;
@@ -66,10 +75,21 @@ public class CardsGuiScreen extends GuiScreen {
     private int runePanelWidth;
     private int runePanelHeight;
 
+    private int runeSlotWidth;
+    private int runeSlotHeight;
+    private int runeSlotGap;
+    private int runeGridX;
+    private int runeGridY;
+
     private static final String[] CARD_NAMES = {
             "Булава", "Накидка вора", "Лесной дух", "Щит",
             "Низший голем", "Речной дракончик", "Энт-пугатель",
             "Хижина", "Посох друида", "Книга земли"
+    };
+
+    private static final String[] RUNE_TYPES = {
+            "Клик", "Клик", "Земля", "Земля", "Земля",
+            "Вода", "Земля", "Ресурс", "Земля", "Земля"
     };
 
     private static final ItemStack[] CARD_ICONS = {
@@ -90,14 +110,7 @@ public class CardsGuiScreen extends GuiScreen {
             3050, 2720, 2410, 3300, 2500
     };
 
-    private static final int BRONZE_COLOR = 0xFFCD7F32;
-    private static final int SILVER_COLOR = 0xFFC0C0C0;
-    private static final int GOLD_COLOR = 0xFFFFD700;
-    private static final int CARD_BG_COLOR = 0xFFFFEE99;
-
     private final List<FlyingCard> flyingCards = new ArrayList<>();
-    private int buyAmount = 1;
-    private static RenderItem renderItem;
 
     private static class CardData {
         int cardIndex;
@@ -110,8 +123,10 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private static class FlyingCard {
-        double startX, startY;
-        double endX, endY;
+        double startX;
+        double startY;
+        double endX;
+        double endY;
         double progress;
         int cardIndex;
         int color;
@@ -144,41 +159,84 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
-    private static class DeckGuiButton extends GuiButton {
-        private final int deckIndex;
-        private final String deckName;
+    private static class FlatGuiButton extends GuiButton {
+        private boolean selected;
+
+        FlatGuiButton(int id, int x, int y, int width, int height, String text) {
+            super(id, x, y, width, height, text);
+        }
+
+        void setSelected(boolean selected) {
+            this.selected = selected;
+        }
+
+        @Override
+        public void drawButton(Minecraft mc, int mouseX, int mouseY, float partialTicks) {
+            if (!this.visible) return;
+
+            this.hovered = mouseX >= this.x && mouseY >= this.y
+                    && mouseX < this.x + this.width && mouseY < this.y + this.height;
+
+            int border = selected ? SELECTED_COLOR : (hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
+            int background = enabled ? 0xE0161B21 : 0xAA101317;
+            int text = enabled ? TEXT_COLOR : MUTED_TEXT_COLOR;
+
+            drawRect(this.x, this.y, this.x + this.width, this.y + this.height, border);
+            drawRect(this.x + 1, this.y + 1, this.x + this.width - 1, this.y + this.height - 1, background);
+            drawCenteredString(mc.fontRenderer, this.displayString,
+                    this.x + this.width / 2,
+                    this.y + (this.height - 8) / 2,
+                    text);
+        }
+    }
+
+    private static class ElementGuiButton extends GuiButton {
+        private final int elementIndex;
+        private final String elementName;
         private final boolean active;
 
-        DeckGuiButton(int id, int x, int y, int deckIndex, String deckName, boolean active) {
-            super(id, x, y, DECK_BUTTON_WIDTH, DECK_BUTTON_HEIGHT, "");
-            this.deckIndex = deckIndex;
-            this.deckName = deckName;
+        ElementGuiButton(int id, int x, int y, int width, int height,
+                         int elementIndex, String elementName, boolean active) {
+            super(id, x, y, width, height, elementName);
+            this.elementIndex = elementIndex;
+            this.elementName = elementName;
             this.active = active;
         }
 
         @Override
         public void drawButton(Minecraft mc, int mouseX, int mouseY, float partialTicks) {
-            super.drawButton(mc, mouseX, mouseY, partialTicks);
             if (!this.visible) return;
 
-            GlStateManager.pushMatrix();
-            mc.getRenderItem().renderItemIntoGUI(DECK_ICON, this.x + 2, this.y + 2);
-            GlStateManager.popMatrix();
+            this.hovered = mouseX >= this.x && mouseY >= this.y
+                    && mouseX < this.x + this.width && mouseY < this.y + this.height;
 
-            String number = String.valueOf(deckIndex + 1);
-            int numberColor = active ? 0x55FF55 : 0xFFFFFF;
-            mc.fontRenderer.drawStringWithShadow(number, this.x + 20, this.y + 6, numberColor);
+            int border = active ? SELECTED_COLOR : (hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
+            int background = active ? 0xE01B2B3B : 0xE014181D;
+
+            drawRect(this.x, this.y, this.x + this.width, this.y + this.height, border);
+            drawRect(this.x + 1, this.y + 1, this.x + this.width - 1, this.y + this.height - 1, background);
+
+            String label = elementName;
+            int maxTextWidth = Math.max(1, this.width - 8);
+            if (mc.fontRenderer.getStringWidth(label) > maxTextWidth) {
+                label = mc.fontRenderer.trimStringToWidth(label, maxTextWidth);
+            }
+
+            drawCenteredString(mc.fontRenderer, label,
+                    this.x + this.width / 2,
+                    this.y + (this.height - 8) / 2,
+                    active ? 0xFFFFFFFF : TEXT_COLOR);
         }
 
-        int getDeckIndex() {
-            return deckIndex;
+        int getElementIndex() {
+            return elementIndex;
         }
 
-        String getDeckName() {
-            return deckName;
+        String getElementName() {
+            return elementName;
         }
 
-        boolean isActiveDeck() {
+        boolean isActiveElement() {
             return active;
         }
     }
@@ -191,69 +249,87 @@ public class CardsGuiScreen extends GuiScreen {
             renderItem = Minecraft.getMinecraft().getRenderItem();
         }
 
-        for (int i = 0; i < SLOT_COUNT; i++) {
+        for (int i = 0; i < STORAGE_SLOT_COUNT; i++) {
             slots[i] = new ArrayList<>();
         }
 
-        int centerX = this.width / 2;
-        int btnY = this.height - 60;
-
-        this.buttonList.add(new GuiButton(0, centerX - 100, btnY, 200, 20, "Купить карточку"));
-
-        this.buttonList.add(new GuiButton(1, centerX - 160, btnY + 25, 50, 18, "x1"));
-        this.buttonList.add(new GuiButton(2, centerX - 105, btnY + 25, 50, 18, "x5"));
-        this.buttonList.add(new GuiButton(3, centerX - 50, btnY + 25, 50, 18, "x10"));
-        this.buttonList.add(new GuiButton(4, centerX + 5, btnY + 25, 50, 18, "x100"));
-        this.buttonList.add(new GuiButton(5, centerX + 60, btnY + 25, 50, 18, "xВсе"));
-
-        rebuildDeckButtons();
+        updateLayout();
+        rebuildControls();
 
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_player_stats"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_decks"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_cards"));
     }
 
-    @Override
-    protected void actionPerformed(GuiButton button) throws IOException {
-        if (button.id >= DECK_BUTTON_START_ID && button.id < DECK_BUTTON_START_ID + MAX_DECKS) {
-            int targetDeck = button.id - DECK_BUTTON_START_ID;
-            if (targetDeck >= 0 && targetDeck < deckNames.size() && targetDeck != activeDeck) {
-                clearCards();
-                NetworkHandler.INSTANCE.sendToServer(new PingPacket("switch_deck:" + targetDeck));
-            }
-            return;
+    private void rebuildControls() {
+        this.buttonList.clear();
+        updateLayout();
+
+        int controlsPadding = Math.max(4, Math.min(8, centerPanelWidth / 20));
+        int buttonX = centerPanelX + controlsPadding;
+        int buttonWidth = Math.max(40, centerPanelWidth - controlsPadding * 2);
+        int amountHeight = 17;
+        int buyHeight = 20;
+        int bottom = centerPanelY + centerPanelHeight - controlsPadding;
+
+        int amountY = bottom - amountHeight;
+        int buyY = amountY - buyHeight - 4;
+
+        this.buttonList.add(new FlatGuiButton(
+                BUY_BUTTON_ID,
+                buttonX,
+                buyY,
+                buttonWidth,
+                buyHeight,
+                "Купить руну"
+        ));
+
+        String[] amountLabels = {"x1", "x5", "x10", "x100", "xВсе"};
+        int amountCount = amountLabels.length;
+        int amountGap = 2;
+        int amountButtonWidth = Math.max(14,
+                (buttonWidth - amountGap * (amountCount - 1)) / amountCount);
+
+        for (int i = 0; i < amountCount; i++) {
+            FlatGuiButton button = new FlatGuiButton(
+                    AMOUNT_BUTTON_START_ID + i,
+                    buttonX + i * (amountButtonWidth + amountGap),
+                    amountY,
+                    amountButtonWidth,
+                    amountHeight,
+                    amountLabels[i]
+            );
+            this.buttonList.add(button);
         }
 
-        if (button.id == 0) {
-            String amount = buyAmount == Integer.MAX_VALUE ? "all" : String.valueOf(buyAmount);
-            NetworkHandler.INSTANCE.sendToServer(new PingPacket("buy_cards:" + amount));
-        } else if (button.id == 1) buyAmount = 1;
-        else if (button.id == 2) buyAmount = 5;
-        else if (button.id == 3) buyAmount = 10;
-        else if (button.id == 4) buyAmount = 100;
-        else if (button.id == 5) buyAmount = Integer.MAX_VALUE;
+        rebuildElementButtons();
+        updateAmountButtonSelection();
     }
 
-    private void rebuildDeckButtons() {
+    private void rebuildElementButtons() {
         for (int i = this.buttonList.size() - 1; i >= 0; i--) {
             int id = this.buttonList.get(i).id;
-            if (id >= DECK_BUTTON_START_ID && id < DECK_BUTTON_START_ID + MAX_DECKS) {
+            if (id >= ELEMENT_BUTTON_START_ID && id < ELEMENT_BUTTON_START_ID + MAX_ELEMENTS) {
                 this.buttonList.remove(i);
             }
         }
 
-        int count = Math.min(deckNames.size(), MAX_DECKS);
+        int count = Math.min(deckNames.size(), MAX_ELEMENTS);
         if (count <= 0) return;
 
-        int totalWidth = count * DECK_BUTTON_WIDTH + (count - 1) * DECK_BUTTON_GAP;
-        int startX = (this.width - totalWidth) / 2;
-        int y = 41;
+        int gap = 3;
+        int availableWidth = Math.max(1, runePanelWidth - PANEL_PADDING * 2);
+        int buttonWidth = Math.max(28, (availableWidth - gap * (count - 1)) / count);
+        int buttonHeight = 18;
+        int y = runePanelY + 24;
 
         for (int i = 0; i < count; i++) {
-            this.buttonList.add(new DeckGuiButton(
-                    DECK_BUTTON_START_ID + i,
-                    startX + i * (DECK_BUTTON_WIDTH + DECK_BUTTON_GAP),
+            this.buttonList.add(new ElementGuiButton(
+                    ELEMENT_BUTTON_START_ID + i,
+                    runePanelX + PANEL_PADDING + i * (buttonWidth + gap),
                     y,
+                    buttonWidth,
+                    buttonHeight,
                     i,
                     deckNames.get(i),
                     i == activeDeck
@@ -261,34 +337,39 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
-    private int getCurrentLayer() {
-        for (int i = 0; i < SLOT_COUNT; i++) if (slots[i].size() < 1) return 1;
-        for (int i = 0; i < SLOT_COUNT; i++) if (slots[i].size() < 2) return 2;
-        for (int i = 0; i < SLOT_COUNT; i++) if (slots[i].size() < 3) return 3;
-        return -1;
-    }
+    private void updateAmountButtonSelection() {
+        int[] amounts = {1, 5, 10, 100, Integer.MAX_VALUE};
+        for (GuiButton guiButton : this.buttonList) {
+            if (!(guiButton instanceof FlatGuiButton)) continue;
+            if (guiButton.id < AMOUNT_BUTTON_START_ID || guiButton.id >= AMOUNT_BUTTON_START_ID + amounts.length) continue;
 
-    private int findSlotForLayer(int layer) {
-        List<Integer> available = new ArrayList<>();
-        for (int i = 0; i < SLOT_COUNT; i++) {
-            if (slots[i].size() == layer - 1) available.add(i);
+            FlatGuiButton button = (FlatGuiButton) guiButton;
+            button.setSelected(buyAmount == amounts[guiButton.id - AMOUNT_BUTTON_START_ID]);
         }
-        if (available.isEmpty()) return -1;
-        return available.get(random.nextInt(available.size()));
     }
 
-    private int[] getSlotPosition(int index) {
-        int row = index / COLS;
-        int col = index % COLS;
+    @Override
+    protected void actionPerformed(GuiButton button) throws IOException {
+        if (button.id >= ELEMENT_BUTTON_START_ID && button.id < ELEMENT_BUTTON_START_ID + MAX_ELEMENTS) {
+            int targetDeck = button.id - ELEMENT_BUTTON_START_ID;
+            if (targetDeck >= 0 && targetDeck < deckNames.size() && targetDeck != activeDeck) {
+                clearCards();
+                NetworkHandler.INSTANCE.sendToServer(new PingPacket("switch_deck:" + targetDeck));
+            }
+            return;
+        }
 
-        int gridWidth = COLS * CARD_WIDTH + (COLS - 1) * CARD_GAP;
-        int gridHeight = ROWS * CARD_HEIGHT + (ROWS - 1) * CARD_GAP;
+        if (button.id == BUY_BUTTON_ID) {
+            String amount = buyAmount == Integer.MAX_VALUE ? "all" : String.valueOf(buyAmount);
+            NetworkHandler.INSTANCE.sendToServer(new PingPacket("buy_cards:" + amount));
+            return;
+        }
 
-        int startX = (this.width - gridWidth) / 2;
-        int startY = (this.height - gridHeight) / 2 - 30;
-
-        return new int[]{startX + col * (CARD_WIDTH + CARD_GAP),
-                startY + row * (CARD_HEIGHT + CARD_GAP)};
+        if (button.id >= AMOUNT_BUTTON_START_ID && button.id < AMOUNT_BUTTON_START_ID + 5) {
+            int[] amounts = {1, 5, 10, 100, Integer.MAX_VALUE};
+            buyAmount = amounts[button.id - AMOUNT_BUTTON_START_ID];
+            updateAmountButtonSelection();
+        }
     }
 
     private void updateLayout() {
@@ -301,12 +382,13 @@ public class CardsGuiScreen extends GuiScreen {
         guiX = (this.width - guiWidth) / 2;
         guiY = (this.height - guiHeight) / 2;
 
-        int contentY = guiY + 38;
-        int contentHeight = Math.max(40, guiHeight - 50);
+        int headerHeight = Math.max(28, Math.min(38, guiHeight / 10));
+        int contentY = guiY + headerHeight;
+        int contentHeight = Math.max(80, guiHeight - headerHeight - 4);
         int usableWidth = Math.max(1, guiWidth - PANEL_GAP * 2);
 
         leftPanelWidth = usableWidth * 18 / 100;
-        centerPanelWidth = usableWidth * 23 / 100;
+        centerPanelWidth = usableWidth * 24 / 100;
         runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
 
         leftPanelX = guiX;
@@ -320,12 +402,59 @@ public class CardsGuiScreen extends GuiScreen {
         runePanelX = centerPanelX + centerPanelWidth + PANEL_GAP;
         runePanelY = contentY;
         runePanelHeight = contentHeight;
+
+        updateRuneGridLayout();
+    }
+
+    private void updateRuneGridLayout() {
+        int horizontalPadding = Math.max(4, Math.min(PANEL_PADDING, runePanelWidth / 30));
+        int topReserved = 58;
+        int bottomPadding = 10;
+        int availableWidth = Math.max(1, runePanelWidth - horizontalPadding * 2);
+        int availableHeight = Math.max(1, runePanelHeight - topReserved - bottomPadding);
+
+        runeSlotGap = Math.max(2, Math.min(4, availableWidth / 150));
+
+        int widthBased = (availableWidth - runeSlotGap * (RUNE_COLUMNS - 1)) / RUNE_COLUMNS;
+        int heightBased = (availableHeight - runeSlotGap * (RUNE_ROWS - 1)) / RUNE_ROWS;
+
+        runeSlotWidth = Math.max(18, Math.min(46, widthBased));
+        runeSlotHeight = Math.max(24, Math.min(58, Math.min(heightBased, runeSlotWidth * 5 / 4)));
+
+        int gridWidth = RUNE_COLUMNS * runeSlotWidth + (RUNE_COLUMNS - 1) * runeSlotGap;
+        int gridHeight = RUNE_ROWS * runeSlotHeight + (RUNE_ROWS - 1) * runeSlotGap;
+
+        runeGridX = runePanelX + (runePanelWidth - gridWidth) / 2;
+        runeGridY = runePanelY + topReserved + Math.max(0, (availableHeight - gridHeight) / 4);
+    }
+
+    private int[] getRuneSlotPosition(int visualIndex) {
+        int row = visualIndex / RUNE_COLUMNS;
+        int col = visualIndex % RUNE_COLUMNS;
+        return new int[]{
+                runeGridX + col * (runeSlotWidth + runeSlotGap),
+                runeGridY + row * (runeSlotHeight + runeSlotGap)
+        };
+    }
+
+    private CardData getRuneForVisualSlot(int visualIndex) {
+        if (visualIndex < 0 || visualIndex >= CARD_NAMES.length) return null;
+
+        CardData best = null;
+        for (int slotIndex = 0; slotIndex < STORAGE_SLOT_COUNT; slotIndex++) {
+            if (slots[slotIndex] == null) continue;
+            for (CardData card : slots[slotIndex]) {
+                if (card.cardIndex != visualIndex) continue;
+                if (best == null || card.layer > best.layer) {
+                    best = card;
+                }
+            }
+        }
+        return best;
     }
 
     private void drawPanel(int x, int y, int width, int height) {
-        if (width <= 0 || height <= 0) {
-            return;
-        }
+        if (width <= 0 || height <= 0) return;
 
         drawRect(x, y, x + width, y + height, PANEL_BORDER_COLOR);
         drawRect(x + 1, y + 1, x + width - 1, y + height - 1, PANEL_BG_COLOR);
@@ -335,146 +464,272 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
+    private void drawHeader() {
+        this.fontRenderer.drawStringWithShadow("РУНЫ", guiX + 4, guiY + 8, TEXT_COLOR);
+
+        String resources = "Монеты: " + ClientPlayerStats.getCoins()
+                + "   Кристаллы: " + ClientPlayerStats.getCrystals()
+                + "   Урон: +" + ClientPlayerStats.getTotalDamage();
+        int resourcesX = guiX + guiWidth - this.fontRenderer.getStringWidth(resources) - 4;
+        this.fontRenderer.drawStringWithShadow(resources, resourcesX, guiY + 8, 0xFFB8C0C7);
+    }
+
+    private void drawLeftPanelContent() {
+        int x = leftPanelX + PANEL_PADDING;
+        int y = leftPanelY + PANEL_PADDING;
+
+        this.fontRenderer.drawStringWithShadow("СТАТИСТИКА", x, y, TEXT_COLOR);
+        y += 18;
+
+        drawStatLine(x, y, "Монеты", String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D);
+        y += 14;
+        drawStatLine(x, y, "Кристаллы", String.valueOf(ClientPlayerStats.getCrystals()), 0xFF54D8E8);
+        y += 14;
+        drawStatLine(x, y, "Урон", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF6D6D);
+        y += 22;
+
+        this.fontRenderer.drawStringWithShadow("ЭФФЕКТЫ", x, y, MUTED_TEXT_COLOR);
+        y += 15;
+        this.fontRenderer.drawString("Будут добавлены", x, y, MUTED_TEXT_COLOR);
+        y += 11;
+        this.fontRenderer.drawString("в следующих этапах", x, y, MUTED_TEXT_COLOR);
+    }
+
+    private void drawStatLine(int x, int y, String name, String value, int color) {
+        this.fontRenderer.drawString(name, x, y, color);
+        int valueX = leftPanelX + leftPanelWidth - PANEL_PADDING - this.fontRenderer.getStringWidth(value);
+        this.fontRenderer.drawString(value, valueX, y, TEXT_COLOR);
+    }
+
+    private void drawCenterPanelContent(int mouseX, int mouseY) {
+        int x = centerPanelX + PANEL_PADDING;
+        int y = centerPanelY + PANEL_PADDING;
+        this.fontRenderer.drawStringWithShadow("СНАРЯЖЕНИЕ", x, y, TEXT_COLOR);
+
+        int slotSize = Math.max(18, Math.min(30, centerPanelWidth / 6));
+        int slotGap = 3;
+        int topY = centerPanelY + 28;
+        int totalTopWidth = slotSize * 4 + slotGap * 3;
+        int topX = centerPanelX + (centerPanelWidth - totalTopWidth) / 2;
+
+        for (int i = 0; i < 4; i++) {
+            drawEmptyEquipmentSlot(topX + i * (slotSize + slotGap), topY, slotSize);
+        }
+
+        int bottomY = centerPanelY + centerPanelHeight - 86 - slotSize;
+        for (int i = 0; i < 4; i++) {
+            drawEmptyEquipmentSlot(topX + i * (slotSize + slotGap), bottomY, slotSize);
+        }
+
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.player != null) {
+            int previewX = centerPanelX + centerPanelWidth / 2;
+            int previewBottom = bottomY - 8;
+            int previewScale = Math.max(18, Math.min(42,
+                    Math.min(centerPanelWidth / 4, Math.max(18, centerPanelHeight / 7))));
+
+            GuiInventory.drawEntityOnScreen(
+                    previewX,
+                    previewBottom,
+                    previewScale,
+                    previewX - mouseX,
+                    previewBottom - previewScale * 2 - mouseY,
+                    mc.player
+            );
+        }
+
+        String selected = "Покупка: " + (buyAmount == Integer.MAX_VALUE ? "xВсе" : "x" + buyAmount);
+        int textX = centerPanelX + (centerPanelWidth - this.fontRenderer.getStringWidth(selected)) / 2;
+        this.fontRenderer.drawString(selected, textX, centerPanelY + centerPanelHeight - 91, MUTED_TEXT_COLOR);
+    }
+
+    private void drawEmptyEquipmentSlot(int x, int y, int size) {
+        drawRect(x, y, x + size, y + size, SLOT_BORDER_COLOR);
+        drawRect(x + 1, y + 1, x + size - 1, y + size - 1, SLOT_BG_COLOR);
+    }
+
+    private void drawRunePanelContent(int mouseX, int mouseY) {
+        this.fontRenderer.drawStringWithShadow(
+                "РУНЫ",
+                runePanelX + PANEL_PADDING,
+                runePanelY + PANEL_PADDING,
+                TEXT_COLOR
+        );
+
+        String countText = "26 слотов";
+        this.fontRenderer.drawString(
+                countText,
+                runePanelX + runePanelWidth - PANEL_PADDING - this.fontRenderer.getStringWidth(countText),
+                runePanelY + PANEL_PADDING,
+                MUTED_TEXT_COLOR
+        );
+
+        for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
+            int[] pos = getRuneSlotPosition(i);
+            drawRuneSlot(pos[0], pos[1], i, mouseX, mouseY);
+        }
+    }
+
+    private void drawRuneSlot(int x, int y, int visualIndex, int mouseX, int mouseY) {
+        boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
+                && mouseY >= y && mouseY < y + runeSlotHeight;
+
+        int border = hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR;
+        drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight, border);
+        drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
+
+        CardData rune = getRuneForVisualSlot(visualIndex);
+        if (rune == null) return;
+
+        int rankColor = getRankColor(rune.layer);
+        drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, rankColor);
+
+        if (visualIndex < CARD_ICONS.length && runeSlotWidth >= 20 && runeSlotHeight >= 24) {
+            int iconX = x + (runeSlotWidth - 16) / 2;
+            int iconY = y + Math.max(4, (runeSlotHeight - 16) / 2 - 3);
+
+            GlStateManager.pushMatrix();
+            GlStateManager.enableRescaleNormal();
+            renderItem.renderItemIntoGUI(CARD_ICONS[visualIndex], iconX, iconY);
+            GlStateManager.popMatrix();
+        }
+
+        if (runeSlotWidth >= 28 && runeSlotHeight >= 34 && visualIndex < RUNE_TYPES.length) {
+            String type = RUNE_TYPES[visualIndex];
+            int maxWidth = Math.max(1, runeSlotWidth - 4);
+            if (this.fontRenderer.getStringWidth(type) > maxWidth) {
+                type = this.fontRenderer.trimStringToWidth(type, maxWidth);
+            }
+            int textX = x + (runeSlotWidth - this.fontRenderer.getStringWidth(type)) / 2;
+            this.fontRenderer.drawString(type, textX, y + runeSlotHeight - 10, 0xFFB8C0C7);
+        }
+    }
+
+    private void drawRankCorners(int x, int y, int width, int height, int color) {
+        int length = Math.max(5, Math.min(10, width / 4));
+        int thickness = width >= 32 ? 2 : 1;
+
+        drawRect(x + 2, y + 2, x + 2 + length, y + 2 + thickness, color);
+        drawRect(x + 2, y + 2, x + 2 + thickness, y + 2 + length, color);
+
+        drawRect(x + width - 2 - length, y + 2, x + width - 2, y + 2 + thickness, color);
+        drawRect(x + width - 2 - thickness, y + 2, x + width - 2, y + 2 + length, color);
+    }
+
+    private void drawRuneTooltip(int mouseX, int mouseY) {
+        for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
+            int[] pos = getRuneSlotPosition(i);
+            int x = pos[0];
+            int y = pos[1];
+
+            if (mouseX < x || mouseX >= x + runeSlotWidth || mouseY < y || mouseY >= y + runeSlotHeight) continue;
+
+            CardData rune = getRuneForVisualSlot(i);
+            if (rune == null || i >= CARD_NAMES.length) return;
+
+            List<String> tooltip = new ArrayList<>();
+            tooltip.add("§b" + CARD_NAMES[i]);
+            tooltip.add("");
+            tooltip.add("§7Ранг: §f" + getRankName(rune.layer));
+            tooltip.add("§7Тип: §f" + (i < RUNE_TYPES.length ? RUNE_TYPES[i] : "Неизвестно"));
+            tooltip.add("§7Эффект: §a+" + CARD_STATS[i]);
+            tooltip.add("§7Усиление: §f0");
+            this.drawHoveringText(tooltip, mouseX, mouseY);
+            return;
+        }
+    }
+
+    private void drawElementTooltip(int mouseX, int mouseY) {
+        for (GuiButton guiButton : this.buttonList) {
+            if (!(guiButton instanceof ElementGuiButton)) continue;
+
+            ElementGuiButton elementButton = (ElementGuiButton) guiButton;
+            if (mouseX < elementButton.x || mouseX >= elementButton.x + elementButton.width
+                    || mouseY < elementButton.y || mouseY >= elementButton.y + elementButton.height) {
+                continue;
+            }
+
+            List<String> tooltip = new ArrayList<>();
+            tooltip.add("§b" + elementButton.getElementName());
+            if (!elementButton.isActiveElement()) {
+                tooltip.add("§7Нажмите, чтобы выбрать стихию");
+            }
+            this.drawHoveringText(tooltip, mouseX, mouseY);
+            return;
+        }
+    }
+
+    private void drawFlyingRune(FlyingCard card) {
+        int x = (int) card.getX();
+        int y = (int) card.getY();
+        int width = Math.max(22, Math.min(34, runeSlotWidth));
+        int height = Math.max(28, Math.min(42, runeSlotHeight));
+
+        drawRect(x - width / 2, y - height / 2, x + width / 2, y + height / 2, SLOT_BORDER_COLOR);
+        drawRect(x - width / 2 + 1, y - height / 2 + 1,
+                x + width / 2 - 1, y + height / 2 - 1, SLOT_BG_COLOR);
+        drawRankCorners(x - width / 2, y - height / 2, width, height, card.color);
+
+        if (card.cardIndex >= 0 && card.cardIndex < CARD_ICONS.length) {
+            renderItem.renderItemIntoGUI(CARD_ICONS[card.cardIndex], x - 8, y - 8);
+        }
+    }
+
     @Override
     public void updateScreen() {
         super.updateScreen();
-        for (FlyingCard fc : new ArrayList<>(flyingCards)) {
-            fc.update();
-            if (fc.isDone()) flyingCards.remove(fc);
+        for (FlyingCard card : new ArrayList<>(flyingCards)) {
+            card.update();
+            if (card.isDone()) flyingCards.remove(card);
         }
     }
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
-
         updateLayout();
+
         drawRect(0, 0, this.width, this.height, OVERLAY_COLOR);
+        drawHeader();
 
         drawPanel(leftPanelX, leftPanelY, leftPanelWidth, leftPanelHeight);
         drawPanel(centerPanelX, centerPanelY, centerPanelWidth, centerPanelHeight);
         drawPanel(runePanelX, runePanelY, runePanelWidth, runePanelHeight);
 
-        PlayerStatsHudRenderer.draw(Minecraft.getMinecraft(), this.width);
+        drawLeftPanelContent();
+        drawCenterPanelContent(mouseX, mouseY);
+        drawRunePanelContent(mouseX, mouseY);
 
-        for (int i = 0; i < SLOT_COUNT; i++) {
-            int[] pos = getSlotPosition(i);
-            drawSlot(pos[0], pos[1], i, mouseX, mouseY);
+        for (FlyingCard card : flyingCards) {
+            drawFlyingRune(card);
         }
-
-        for (FlyingCard fc : flyingCards) {
-            drawCard((int) fc.getX(), (int) fc.getY(), fc.cardIndex, fc.color, false);
-        }
-
-        drawCenteredString(this.fontRenderer, "Карточки", this.width / 2, 24, 0xFFFFFF);
-        drawCenteredString(this.fontRenderer, "Покупка: x" + (buyAmount == Integer.MAX_VALUE ? "Все" : buyAmount),
-                this.width / 2, this.height - 85, 0xFFFF00);
 
         super.drawScreen(mouseX, mouseY, partialTicks);
-        drawDeckTooltip(mouseX, mouseY);
+        drawElementTooltip(mouseX, mouseY);
+        drawRuneTooltip(mouseX, mouseY);
     }
 
-    private void drawDeckTooltip(int mouseX, int mouseY) {
-        for (GuiButton guiButton : this.buttonList) {
-            if (!(guiButton instanceof DeckGuiButton)) continue;
-
-            DeckGuiButton deckButton = (DeckGuiButton) guiButton;
-            if (mouseX < deckButton.x || mouseX > deckButton.x + deckButton.width
-                    || mouseY < deckButton.y || mouseY > deckButton.y + deckButton.height) {
-                continue;
-            }
-
-            List<String> tooltip = new ArrayList<>();
-            tooltip.add("§6" + deckButton.getDeckName());
-            if (!deckButton.isActiveDeck()) {
-                tooltip.add("§eНажмите, чтобы переключить");
-            }
-            this.drawHoveringText(tooltip, mouseX, mouseY);
-            return;
-        }
-    }
-
-    private void drawSlot(int x, int y, int index, int mouseX, int mouseY) {
-        List<CardData> stack = slots[index];
-
-        if (stack.isEmpty()) {
-            drawRect(x, y, x + CARD_WIDTH, y + CARD_HEIGHT, 0xFF222222);
-            drawRect(x + 1, y + 1, x + CARD_WIDTH - 1, y + CARD_HEIGHT - 1, 0xFF333333);
-            return;
-        }
-
-        CardData topCard = stack.get(0);
-        for (CardData card : stack) {
-            if (card.layer > topCard.layer) topCard = card;
-        }
-
-        int borderColor = getLayerColor(topCard.layer);
-        drawCard(x, y, topCard.cardIndex, borderColor, true);
-
-        if (stack.size() > 1) {
-            String count = "x" + stack.size();
-            this.fontRenderer.drawStringWithShadow(count,
-                    x + CARD_WIDTH - 16, y + CARD_HEIGHT - 10, 0xFFFF00);
-        }
-
-        if (mouseX >= x && mouseX <= x + CARD_WIDTH && mouseY >= y && mouseY <= y + CARD_HEIGHT) {
-            List<String> tooltip = new ArrayList<>();
-            tooltip.add("§6" + CARD_NAMES[topCard.cardIndex]);
-            tooltip.add("§7Слой: §e" + getLayerName(topCard.layer));
-            tooltip.add("§7В слоте: §e" + stack.size() + " карт");
-            tooltip.add("§7Стат: §a+" + CARD_STATS[topCard.cardIndex]);
-            this.drawHoveringText(tooltip, mouseX, mouseY);
-        }
-    }
-
-    private void drawCard(int x, int y, int cardIndex, int color, boolean full) {
-        drawRect(x, y, x + CARD_WIDTH, y + CARD_HEIGHT, CARD_BG_COLOR);
-
-        drawRect(x, y, x + CARD_WIDTH, y + 2, color);
-        drawRect(x, y + CARD_HEIGHT - 2, x + CARD_WIDTH, y + CARD_HEIGHT, color);
-        drawRect(x, y, x + 2, y + CARD_HEIGHT, color);
-        drawRect(x + CARD_WIDTH - 2, y, x + CARD_WIDTH, y + CARD_HEIGHT, color);
-
-        if (!full) return;
-
-        drawRect(x + 2, y + 2, x + CARD_WIDTH - 2, y + 12, 0xFFAA8844);
-        this.fontRenderer.drawStringWithShadow("★89", x + 4, y + 3, 0xFFFFFF);
-
-        GlStateManager.pushMatrix();
-        GlStateManager.enableRescaleNormal();
-        GlStateManager.scale(1.0F, 1.0F, 1.0F);
-        renderItem.renderItemIntoGUI(CARD_ICONS[cardIndex], x + CARD_WIDTH / 2 - 8, y + 14);
-        GlStateManager.popMatrix();
-
-        String name = CARD_NAMES[cardIndex];
-        if (this.fontRenderer.getStringWidth(name) > CARD_WIDTH - 4) {
-            name = this.fontRenderer.trimStringToWidth(name, CARD_WIDTH - 6);
-        }
-        this.fontRenderer.drawStringWithShadow(name,
-                x + (CARD_WIDTH - this.fontRenderer.getStringWidth(name)) / 2,
-                y + 33, 0xFFFFFF);
-
-        String stat = "+" + CARD_STATS[cardIndex];
-        this.fontRenderer.drawStringWithShadow(stat,
-                x + (CARD_WIDTH - this.fontRenderer.getStringWidth(stat)) / 2,
-                y + 43, 0x55FF55);
-    }
-
-    private int getLayerColor(int layer) {
+    private int getRankColor(int layer) {
         switch (layer) {
-            case 1: return BRONZE_COLOR;
-            case 2: return SILVER_COLOR;
-            case 3: return GOLD_COLOR;
-            default: return BRONZE_COLOR;
+            case 2:
+                return SILVER_COLOR;
+            case 3:
+                return GOLD_COLOR;
+            case 1:
+            default:
+                return NORMAL_COLOR;
         }
     }
 
-    private String getLayerName(int layer) {
+    private String getRankName(int layer) {
         switch (layer) {
-            case 1: return "Бронза";
-            case 2: return "Серебро";
-            case 3: return "Золото";
-            default: return "?";
+            case 2:
+                return "Серебряная";
+            case 3:
+                return "Золотая";
+            case 1:
+            default:
+                return "Обычная";
         }
     }
 
@@ -486,14 +741,14 @@ public class CardsGuiScreen extends GuiScreen {
         this.deckNames.clear();
         this.deckNames.addAll(names);
         this.activeDeck = activeDeck;
-        rebuildDeckButtons();
+        rebuildControls();
 
-        CustomGuiMod.logger.info("Decks updated on client: " + deckNames.size()
-                + ", active=" + activeDeck);
+        CustomGuiMod.logger.info("Elements updated on client: " + deckNames.size()
+                + ", selected=" + activeDeck);
     }
 
     public void addCardFromServer(int slot, int cardIndex, int layer, boolean animate) {
-        if (slot < 0 || slot >= SLOT_COUNT) return;
+        if (slot < 0 || slot >= STORAGE_SLOT_COUNT) return;
 
         if (slots[slot] == null) {
             slots[slot] = new ArrayList<>();
@@ -502,22 +757,24 @@ public class CardsGuiScreen extends GuiScreen {
         CardData card = new CardData(cardIndex, layer);
         slots[slot].add(card);
 
-        if (animate) {
-            int[] pos = getSlotPosition(slot);
+        if (animate && cardIndex >= 0 && cardIndex < VISIBLE_RUNE_SLOTS) {
+            int[] pos = getRuneSlotPosition(cardIndex);
             flyingCards.add(new FlyingCard(
-                    this.width / 2.0, this.height - 50,
-                    pos[0] + CARD_WIDTH / 2.0,
-                    pos[1] + CARD_HEIGHT / 2.0,
-                    cardIndex, getLayerColor(layer)
+                    centerPanelX + centerPanelWidth / 2.0,
+                    centerPanelY + centerPanelHeight - 45.0,
+                    pos[0] + runeSlotWidth / 2.0,
+                    pos[1] + runeSlotHeight / 2.0,
+                    cardIndex,
+                    getRankColor(layer)
             ));
         }
 
-        CustomGuiMod.logger.info("Добавлена карточка от сервера: слот " + slot + ", индекс " + cardIndex
+        CustomGuiMod.logger.info("Добавлена руна от сервера: слот " + slot + ", индекс " + cardIndex
                 + " (анимация: " + animate + ")");
     }
 
     public void clearCards() {
-        for (int i = 0; i < SLOT_COUNT; i++) {
+        for (int i = 0; i < STORAGE_SLOT_COUNT; i++) {
             if (slots[i] == null) {
                 slots[i] = new ArrayList<>();
             } else {
@@ -525,7 +782,7 @@ public class CardsGuiScreen extends GuiScreen {
             }
         }
         flyingCards.clear();
-        CustomGuiMod.logger.info("Карточки очищены на клиенте");
+        CustomGuiMod.logger.info("Руны очищены на клиенте");
     }
 
     @Override
