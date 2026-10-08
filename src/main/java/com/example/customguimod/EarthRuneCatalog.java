@@ -1,11 +1,12 @@
 package com.example.customguimod;
 
-/** First element: fixed positions, in reading order from the supplied reference. */
+/** First status: fixed rune positions in reading order. */
 final class EarthRuneCatalog {
     static final class Definition {
         final String name;
         final String type;
         final String iconTexture;
+
         Definition(String name, String type, String iconFile) {
             this.name = name;
             this.type = type;
@@ -14,32 +15,32 @@ final class EarthRuneCatalog {
     }
 
     private static final Definition[] RUNES = {
-        new Definition("Каменный молот", "Клик", "stone_hammer.png"),
-        new Definition("Каменный молот", "Клик", "stone_hammer.png"),
-        new Definition("Каменный молот", "Клик", "stone_hammer.png"),
-        new Definition("Каменный молот", "Клик", "stone_hammer.png"),
-        new Definition("Теневой клинок", "Клик", "shadow_blade.png"),
-        new Definition("Теневой клинок", "Клик", "shadow_blade.png"),
-        new Definition("Теневой клинок", "Клик", "shadow_blade.png"),
-        new Definition("Сердце леса", "Клик", "heart_of_forest.png"),
-        new Definition("Печать кузнеца", "Усиление", "forge_seal.png"),
-        new Definition("Печать кузнеца", "Усиление", "forge_seal.png"),
-        new Definition("Сердце голема", "Усиление", "golem_heart.png"),
-        new Definition("Мшистый осколок", "Клик / Земля", "moss_shard.png"),
-        new Definition("Мшистый осколок", "Клик / Земля", "moss_shard.png"),
-        new Definition("Древний корень", "Земля", "ancient_root.png"),
-        new Definition("Древний корень", "Земля", "ancient_root.png"),
-        new Definition("Древний корень", "Земля", "ancient_root.png"),
-        new Definition("Древний корень", "Земля", "ancient_root.png"),
-        new Definition("Обсидиановый шип", "Земля", "obsidian_spike.png"),
-        new Definition("Обсидиановый шип", "Земля", "obsidian_spike.png"),
-        new Definition("Обсидиановый шип", "Земля", "obsidian_spike.png"),
-        new Definition("Семя древолеса", "Усиление", "ancient_seed.png"),
-        new Definition("Семя древолеса", "Усиление", "ancient_seed.png"),
-        new Definition("Треснувшая печать", "Усиление", "cracked_seal.png"),
-        new Definition("Треснувшая печать", "Усиление", "cracked_seal.png"),
-        new Definition("Треснувшая печать", "Усиление", "cracked_seal.png"),
-        new Definition("Золотой самородок", "Ресурс", "gold_nugget.png")
+        new Definition("Кинжал убийцы", "Клик", "stone_hammer.png"),
+        new Definition("Кинжал убийцы", "Клик", "stone_hammer.png"),
+        new Definition("Кинжал убийцы", "Клик", "stone_hammer.png"),
+        new Definition("Кинжал убийцы", "Клик", "stone_hammer.png"),
+        new Definition("Накидка убийцы", "Клик", "shadow_blade.png"),
+        new Definition("Накидка убийцы", "Клик", "shadow_blade.png"),
+        new Definition("Накидка убийцы", "Клик", "shadow_blade.png"),
+        new Definition("Перчатка скрытого удара", "Клик", "heart_of_forest.png"),
+        new Definition("Камень заточки", "Клик", "forge_seal.png"),
+        new Definition("Камень заточки", "Клик", "forge_seal.png"),
+        new Definition("Амулет ярости", "Клик", "golem_heart.png"),
+        new Definition("Токсичный осколок", "Клик / Яд", "moss_shard.png"),
+        new Definition("Токсичный осколок", "Клик / Яд", "moss_shard.png"),
+        new Definition("Клык змеи", "Яд", "ancient_root.png"),
+        new Definition("Клык змеи", "Яд", "ancient_root.png"),
+        new Definition("Клык змеи", "Яд", "ancient_root.png"),
+        new Definition("Клык змеи", "Яд", "ancient_root.png"),
+        new Definition("Печать заражения", "Яд", "obsidian_spike.png"),
+        new Definition("Печать заражения", "Яд", "obsidian_spike.png"),
+        new Definition("Печать заражения", "Яд", "obsidian_spike.png"),
+        new Definition("Усилитель токсина", "Яд", "ancient_seed.png"),
+        new Definition("Усилитель токсина", "Яд", "ancient_seed.png"),
+        new Definition("Метка заражения", "Яд", "cracked_seal.png"),
+        new Definition("Метка заражения", "Яд", "cracked_seal.png"),
+        new Definition("Метка заражения", "Яд", "cracked_seal.png"),
+        new Definition("Реликвия охотника", "Ресурс", "gold_nugget.png")
     };
 
     // Legacy icon indices are retained for compatibility; PNG paths live in each definition.
@@ -53,6 +54,7 @@ final class EarthRuneCatalog {
     }
 
     static int size() { return RUNES.length; }
+
     static Definition at(int slot) {
         return slot < 0 || slot >= RUNES.length ? null : RUNES[slot];
     }
