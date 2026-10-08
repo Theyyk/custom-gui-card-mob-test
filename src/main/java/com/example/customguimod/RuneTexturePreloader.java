@@ -1,6 +1,7 @@
 package com.example.customguimod;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.util.ResourceLocation;
@@ -12,6 +13,15 @@ import java.util.Set;
 
 @SideOnly(Side.CLIENT)
 final class RuneTexturePreloader implements IResourceManagerReloadListener {
+
+    static void register() {
+        IResourceManager resourceManager = Minecraft.getMinecraft().getResourceManager();
+        if (resourceManager instanceof IReloadableResourceManager) {
+            ((IReloadableResourceManager) resourceManager).registerReloadListener(new RuneTexturePreloader());
+        } else {
+            new RuneTexturePreloader().onResourceManagerReload(resourceManager);
+        }
+    }
 
     @Override
     public void onResourceManagerReload(IResourceManager resourceManager) {
