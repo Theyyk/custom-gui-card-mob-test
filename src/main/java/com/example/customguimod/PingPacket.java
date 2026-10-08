@@ -82,7 +82,7 @@ public class PingPacket implements IMessage {
                 } else if (action.startsWith("upgrade_rune:")) {
                     String rawIndex = action.substring("upgrade_rune:".length());
                     try {
-                        upgradeRune(player, deckIndex, Integer.parseInt(rawIndex));
+                        awakenRune(player, deckIndex, Integer.parseInt(rawIndex));
                     } catch (NumberFormatException e) {
                         player.sendMessage(new TextComponentString("§cНекорректная руна."));
                     }
@@ -186,18 +186,26 @@ public class PingPacket implements IMessage {
                 return;
             }
 
+            List<MongoManager.SavedCard> cards = MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex);
             boolean[] owned = new boolean[RuneInventory.BOOST_TYPE_COUNT];
+            int[] bestRanks = new int[RuneInventory.BOOST_TYPE_COUNT];
             int ownedCount = 0;
-            for (MongoManager.SavedCard card : MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex)) {
-                if (card.cardIndex >= 0 && card.cardIndex < RuneInventory.BOOST_TYPE_COUNT
-                        && !owned[card.cardIndex]) {
+
+            for (MongoManager.SavedCard card : cards) {
+                if (card.cardIndex < 0 || card.cardIndex >= RuneInventory.BOOST_TYPE_COUNT) continue;
+                if (!owned[card.cardIndex]) {
                     owned[card.cardIndex] = true;
                     ownedCount++;
                 }
+                bestRanks[card.cardIndex] = Math.max(bestRanks[card.cardIndex], clampRank(card.layer));
             }
 
+            int purchaseRank = collectionRank(owned, bestRanks);
             if (ownedCount >= RuneInventory.BOOST_TYPE_COUNT) {
-                player.sendMessage(new TextComponentString("§eВсе 26 рун собраны. §6Пробудите руну."));
+                player.sendMessage(new TextComponentString(
+                        purchaseRank >= RuneInventory.GOLD_RANK
+                                ? "§6Все 26 продвинутых рун собраны. Достигнут максимальный ранг."
+                                : "§eВсе 26 рун текущего ранга собраны. §6Пробудите одну руну."));
                 NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
                 return;
             }
@@ -221,19 +229,23 @@ public class PingPacket implements IMessage {
                 }
 
                 owned[runeIndex] = true;
+                bestRanks[runeIndex] = purchaseRank;
                 ownedCount++;
                 newRunes++;
                 MongoManager.addCardToDeck(
                         player.getUniqueID(), deckIndex,
-                        runeIndex, runeIndex, RuneInventory.NORMAL_RANK, 1);
+                        runeIndex, runeIndex, purchaseRank, 1);
                 NetworkHandler.INSTANCE.sendTo(
-                        new CardPacket(runeIndex, runeIndex, RuneInventory.NORMAL_RANK, true), player);
+                        new CardPacket(runeIndex, runeIndex, purchaseRank, true), player);
             }
 
             finishPurchase(player, balance, requestedAmount, buyAll, attempts, newRunes, duplicates);
 
             if (ownedCount >= RuneInventory.BOOST_TYPE_COUNT) {
-                player.sendMessage(new TextComponentString("§6Коллекция завершена: 26 / 26. Пробудите руну."));
+                player.sendMessage(new TextComponentString(
+                        purchaseRank >= RuneInventory.GOLD_RANK
+                                ? "§6Собраны все 26 продвинутых рун. Максимальный ранг достигнут."
+                                : "§6Собраны все 26 рун ранга «" + rankName(purchaseRank) + "». Пробудите одну руну."));
             }
         }
 
@@ -260,9 +272,9 @@ public class PingPacket implements IMessage {
             }
         }
 
-        private void upgradeRune(EntityPlayerMP player, int deckIndex, int runeIndex) {
+        private void awakenRune(EntityPlayerMP player, int deckIndex, int runeIndex) {
             if (deckIndex != 0) {
-                player.sendMessage(new TextComponentString("§cТестовое улучшение ранга доступно только первой стихии."));
+                player.sendMessage(new TextComponentString("§cПробуждение пока доступно только первой стихии."));
                 return;
             }
             if (runeIndex < 0 || runeIndex >= RuneInventory.BOOST_TYPE_COUNT) {
@@ -272,7 +284,7 @@ public class PingPacket implements IMessage {
 
             List<MongoManager.SavedCard> cards = MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex);
             boolean[] owned = new boolean[RuneInventory.BOOST_TYPE_COUNT];
-            int[] ranks = new int[RuneInventory.BOOST_TYPE_COUNT];
+            int[] bestRanks = new int[RuneInventory.BOOST_TYPE_COUNT];
             int ownedCount = 0;
 
             for (MongoManager.SavedCard card : cards) {
@@ -281,12 +293,12 @@ public class PingPacket implements IMessage {
                     owned[card.cardIndex] = true;
                     ownedCount++;
                 }
-                ranks[card.cardIndex] = Math.max(ranks[card.cardIndex], card.layer);
+                bestRanks[card.cardIndex] = Math.max(bestRanks[card.cardIndex], clampRank(card.layer));
             }
 
             if (ownedCount < RuneInventory.BOOST_TYPE_COUNT) {
                 player.sendMessage(new TextComponentString(
-                        "§eСначала собери все 26 рун этой стихии. Сейчас: " + ownedCount + " / 26."));
+                        "§eСначала собери все 26 рун текущего ранга. Сейчас: " + ownedCount + " / 26."));
                 return;
             }
             if (!owned[runeIndex]) {
@@ -294,22 +306,43 @@ public class PingPacket implements IMessage {
                 return;
             }
 
-            int currentRank = Math.max(RuneInventory.NORMAL_RANK, ranks[runeIndex]);
+            int currentRank = collectionRank(owned, bestRanks);
             if (currentRank >= RuneInventory.GOLD_RANK) {
-                player.sendMessage(new TextComponentString("§6У этой руны уже продвинутый ранг."));
+                player.sendMessage(new TextComponentString("§6Продвинутый ранг уже максимальный."));
                 return;
             }
 
             int newRank = currentRank + 1;
-            if (!MongoManager.setRuneRank(player.getUniqueID(), deckIndex, runeIndex, newRank)) {
-                player.sendMessage(new TextComponentString("§cНе удалось сохранить новый ранг руны."));
-                return;
-            }
 
-            NetworkHandler.INSTANCE.sendTo(
-                    new CardPacket(runeIndex, runeIndex, newRank, false), player);
+            MongoManager.clearDeck(player.getUniqueID(), deckIndex);
+            MongoManager.addCardToDeck(
+                    player.getUniqueID(), deckIndex,
+                    runeIndex, runeIndex, newRank, 1);
+
+            NetworkHandler.INSTANCE.sendTo(new CardPacket(-1, 0, 0, false), player);
+            NetworkHandler.INSTANCE.sendTo(new CardPacket(runeIndex, runeIndex, newRank, false), player);
+            PlayerStatsService.sendTo(player);
+
             player.sendMessage(new TextComponentString(
-                    "§aРанг руны повышен: §f" + rankName(newRank)));
+                    "§aРуна пробуждена до ранга §f" + rankName(newRank)
+                            + "§a. Все руны прошлого ранга сброшены. Бонус этой руны теперь x3."));
+        }
+
+        private int collectionRank(boolean[] owned, int[] bestRanks) {
+            int minRank = RuneInventory.GOLD_RANK;
+            boolean found = false;
+            for (int rune = 0; rune < RuneInventory.BOOST_TYPE_COUNT; rune++) {
+                if (!owned[rune]) continue;
+                found = true;
+                minRank = Math.min(minRank, clampRank(bestRanks[rune]));
+            }
+            return found ? minRank : RuneInventory.NORMAL_RANK;
+        }
+
+        private int clampRank(int rank) {
+            if (rank <= RuneInventory.NORMAL_RANK) return RuneInventory.NORMAL_RANK;
+            if (rank >= RuneInventory.GOLD_RANK) return RuneInventory.GOLD_RANK;
+            return rank;
         }
 
         private String rankName(int rank) {
