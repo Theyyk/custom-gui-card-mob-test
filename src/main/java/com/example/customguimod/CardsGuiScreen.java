@@ -784,13 +784,13 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawRuneTypeBadge(String type, int x, int y, int size, int availableWidth) {
-        boolean hybrid = "Клик / Земля".equals(type);
+        boolean hybrid = "Клик / Яд".equals(type);
         int glyphSize = hybrid ? Math.max(2, Math.min(size, (availableWidth - 1) / 2)) : size;
         int badgeWidth = hybrid ? glyphSize * 2 + 1 : glyphSize;
         x -= badgeWidth;
         drawRect(x - 1, y - 1, x + badgeWidth + 1, y + glyphSize + 1, 0xD012161B);
         drawTypeGlyph(hybrid ? "Клик" : type, x, y, glyphSize);
-        if (hybrid) drawTypeGlyph("Земля", x + glyphSize + 1, y, glyphSize);
+        if (hybrid) drawTypeGlyph("Яд", x + glyphSize + 1, y, glyphSize);
     }
 
     private void drawTypeGlyph(String type, int x, int y, int size) {
@@ -799,9 +799,9 @@ public class CardsGuiScreen extends GuiScreen {
         if ("Клик".equals(type)) {
             rows = new String[]{"0001100", "0011000", "0110000", "1111110", "0001100", "0011000", "0110000"};
             color = 0xFFFFD34E;
-        } else if ("Земля".equals(type)) {
-            rows = new String[]{"0000011", "0001111", "0011110", "0111100", "1111000", "1100000", "1000000"};
-            color = 0xFF65D55E;
+        } else if ("Яд".equals(type)) {
+            rows = new String[]{"0001000", "0011100", "0111110", "1111111", "1111111", "0111110", "0011100"};
+            color = 0xFF72E84A;
         } else if ("Усиление".equals(type)) {
             rows = new String[]{"0001000", "0011100", "0111110", "1111111", "0001000", "0001000", "0001000"};
             color = 0xFF73BEFF;
@@ -890,7 +890,7 @@ public class CardsGuiScreen extends GuiScreen {
             List<String> tooltip = new ArrayList<>();
             tooltip.add("§b" + button.getElementName());
             if (!button.isActiveElement()) {
-                tooltip.add("§7Нажмите, чтобы выбрать стихию");
+                tooltip.add("§7Нажмите, чтобы выбрать статус");
             }
             drawHoveringText(tooltip, mouseX, mouseY);
             return;
@@ -904,7 +904,7 @@ public class CardsGuiScreen extends GuiScreen {
                     || mouseY < button.y || mouseY >= button.y + button.height) continue;
             List<String> tooltip = new ArrayList<>();
             tooltip.add("§bРуны");
-            tooltip.add("§7Стихии и коллекция рун");
+            tooltip.add("§7Статусы и коллекция рун");
             drawHoveringText(tooltip, mouseX, mouseY);
             return;
         }
