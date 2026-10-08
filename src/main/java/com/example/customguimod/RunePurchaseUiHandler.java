@@ -38,20 +38,7 @@ public class RunePurchaseUiHandler {
 
     @SubscribeEvent
     public void onDrawPost(GuiScreenEvent.DrawScreenEvent.Post event) {
-        if (!(event.getGui() instanceof CardsGuiScreen)) return;
-
-        CardsGuiScreen screen = (CardsGuiScreen) event.getGui();
-        RuneInventory inventory = getInventory(screen);
-        if (inventory == null) return;
-
-        boolean full = inventory.hasAllCatalogRunes();
-        GuiButton buyButton = applyButtons(screen, full);
-        if (!full || buyButton == null) return;
-
-        String hint = "Пробудите руну";
-        int x = buyButton.x + (buyButton.width - Minecraft.getMinecraft().fontRenderer.getStringWidth(hint)) / 2;
-        int y = Math.max(2, buyButton.y - 28);
-        Minecraft.getMinecraft().fontRenderer.drawStringWithShadow(hint, x, y, 0xFFFFC83D);
+        applyState(event.getGui());
     }
 
     @SubscribeEvent
@@ -62,6 +49,7 @@ public class RunePurchaseUiHandler {
         CardsGuiScreen screen = (CardsGuiScreen) event.getGui();
         RuneInventory inventory = getInventory(screen);
         if (inventory == null || !inventory.hasAllCatalogRunes()) return;
+        if (getCollectionRank(inventory) >= RuneInventory.GOLD_RANK) return;
         if (getIntField(screen, getActiveDeckField()) != 0) return;
 
         Minecraft mc = Minecraft.getMinecraft();
@@ -84,8 +72,7 @@ public class RunePurchaseUiHandler {
             if (mouseX < x || mouseX >= x + slotWidth || mouseY < y || mouseY >= y + slotHeight) continue;
 
             RuneInventory.Entry owned = inventory.get(rune);
-            if (owned == null || owned.layer >= RuneInventory.GOLD_RANK) return;
-
+            if (owned == null) return;
             NetworkHandler.INSTANCE.sendToServer(new PingPacket("upgrade_rune:" + rune));
             return;
         }
@@ -96,36 +83,52 @@ public class RunePurchaseUiHandler {
         CardsGuiScreen screen = (CardsGuiScreen) gui;
         RuneInventory inventory = getInventory(screen);
         if (inventory == null) return;
-        applyButtons(screen, inventory.hasAllCatalogRunes());
+
+        boolean full = inventory.hasAllCatalogRunes();
+        int collectionRank = getCollectionRank(inventory);
+        applyButtons(screen, full, collectionRank);
     }
 
-    private GuiButton applyButtons(CardsGuiScreen screen, boolean full) {
-        GuiButton buyButton = null;
+    private void applyButtons(CardsGuiScreen screen, boolean full, int collectionRank) {
         for (GuiButton button : getButtons(screen)) {
             if (button.id == BUY_BUTTON_ID) {
-                buyButton = button;
-                button.enabled = !full;
-                button.displayString = "Купить руну · " + CARD_COST + " монет";
+                if (!full) {
+                    button.enabled = true;
+                    button.displayString = "Купить руну · " + CARD_COST + " монет";
+                } else {
+                    button.enabled = false;
+                    button.displayString = collectionRank >= RuneInventory.GOLD_RANK
+                            ? "Максимальный ранг"
+                            : "Пробудить руну";
+                }
             } else if (button.id >= AMOUNT_BUTTON_START_ID && button.id <= AMOUNT_BUTTON_END_ID) {
                 button.enabled = !full;
             }
         }
-        return buyButton;
+    }
+
+    private int getCollectionRank(RuneInventory inventory) {
+        int minRank = RuneInventory.GOLD_RANK;
+        boolean found = false;
+        for (int rune = 0; rune < RuneInventory.BOOST_TYPE_COUNT; rune++) {
+            RuneInventory.Entry entry = inventory.get(rune);
+            if (entry == null) continue;
+            found = true;
+            minRank = Math.min(minRank, entry.layer);
+        }
+        return found ? minRank : RuneInventory.NORMAL_RANK;
     }
 
     @SuppressWarnings("unchecked")
     private List<GuiButton> getButtons(CardsGuiScreen screen) {
         try {
             if (buttonListField == null) {
-                try {
-                    buttonListField = ObfuscationReflectionHelper.findField(GuiScreen.class, "field_146292_n");
-                } catch (RuntimeException ignored) {
-                    buttonListField = GuiScreen.class.getDeclaredField("buttonList");
-                    buttonListField.setAccessible(true);
-                }
+                buttonListField = ObfuscationReflectionHelper.findField(
+                        GuiScreen.class, "field_146292_n");
+                buttonListField.setAccessible(true);
             }
             return (List<GuiButton>) buttonListField.get(screen);
-        } catch (ReflectiveOperationException | RuntimeException e) {
+        } catch (RuntimeException | IllegalAccessException e) {
             CustomGuiMod.logger.warn("Could not read GUI button list for rune purchase UI", e);
             return Collections.emptyList();
         }
