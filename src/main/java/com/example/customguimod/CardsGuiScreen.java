@@ -742,25 +742,27 @@ public class CardsGuiScreen extends GuiScreen {
             runeTextureSizes.put(definition.iconTexture, dimensions);
         }
         int badgeSize = Math.max(3, Math.min(8, Math.min(w, h) / 5));
-        int padding = Math.max(2, Math.round(Math.min(w, h) * 0.10F));
+        int padding = Math.max(1, Math.round(Math.min(w, h) * 0.07F));
         int availableW = Math.max(1, w - padding * 2);
-        int availableH = Math.max(1, h - padding * 2 - badgeSize - 2);
+        int availableH = Math.max(1, h - padding * 2);
         if (dimensions[0] > 0 && dimensions[1] > 0) {
             float scale = Math.min(availableW / (float) dimensions[0], availableH / (float) dimensions[1]);
             int drawW = Math.max(1, Math.round(dimensions[0] * scale));
             int drawH = Math.max(1, Math.round(dimensions[1] * scale));
-            GlStateManager.color(1, 1, 1, 1);
+            int drawX = x + (w - drawW) / 2;
+            int drawY = y + (h - drawH) / 2;
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
             GlStateManager.enableBlend();
             GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
             mc.getTextureManager().bindTexture(texture);
-            drawScaledCustomSizeModalRect(x + (w - drawW) / 2,
-                    y + padding + (availableH - drawH) / 2, 0, 0,
+            drawScaledCustomSizeModalRect(drawX, drawY, 0, 0,
                     dimensions[0], dimensions[1], drawW, drawH, dimensions[0], dimensions[1]);
             GlStateManager.disableBlend();
+            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         } else {
             int size = Math.max(1, Math.min(availableW, availableH));
             int left = x + (w - size) / 2;
-            int top = y + padding + (availableH - size) / 2;
+            int top = y + (h - size) / 2;
             drawRect(left, top, left + size, top + size, PANEL_LINE_COLOR);
             if (size > 4) drawRect(left + 2, top + 2, left + size - 2, top + size - 2, PANEL_BG_COLOR);
         }
