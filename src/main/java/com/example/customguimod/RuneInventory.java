@@ -76,12 +76,9 @@ final class RuneInventory {
         return hasAllCatalogRunes() && entry != null && entry.layer < GOLD_RANK;
     }
 
-    /**
-     * Kept for legacy callers. The first element no longer has a purchase-attempt limit;
-     * the GUI/server purchase flow does not use this as a blocker anymore.
-     */
+    /** Purchase attempts stop once all 26 fixed runes of the element are collected. */
     boolean isPurchaseLimitReached() {
-        return false;
+        return hasAllCatalogRunes();
     }
 
     /** Legacy helper for old non-element collections that still use fixed storage slots. */
