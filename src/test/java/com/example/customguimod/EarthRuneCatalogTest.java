@@ -9,13 +9,20 @@ final class EarthRuneCatalogTest {
                 "Древний корень", "Древний корень", "Древний корень", "Древний корень",
                 "Обсидиановый шип", "Обсидиановый шип", "Обсидиановый шип", "Семя древолеса", "Семя древолеса",
                 "Треснувшая печать", "Треснувшая печать", "Треснувшая печать", "Золотой самородок"};
+        java.util.Set<String> textures = new java.util.HashSet<>();
         RuneInventory inventory = new RuneInventory();
         for (int slot = 0; slot < expected.length; slot++) {
             check(EarthRuneCatalog.at(slot).name.equals(expected[slot]), "Reference order differs at " + slot);
             check(!EarthRuneCatalog.at(slot).type.isEmpty(), "Every position needs a type");
             check(EarthRuneCatalog.iconIndex(slot) >= 0 && EarthRuneCatalog.iconIndex(slot) <= 10, "Every rune needs a placeholder icon");
+            String texture = EarthRuneCatalog.at(slot).iconTexture;
+            check(texture.startsWith("customguimod:textures/gui/runes/") && texture.endsWith(".png"), "PNG path required");
+            textures.add(texture);
+            if (slot > 0 && expected[slot].equals(expected[slot - 1]))
+                check(texture.equals(EarthRuneCatalog.at(slot - 1).iconTexture), "Duplicates must share PNG paths");
             inventory.set(slot, slot, slot % 3 + 1);
         }
+        check(textures.size() == 11, "Exactly eleven unique PNG paths required");
         check(inventory.ownedCatalogSlotCount() == 26, "Repeated names must occupy distinct positions");
         check(inventory.get(0).layer == 1 && inventory.get(1).layer == 2,
                 "Two Bulavas must keep their own ownership and ranks");

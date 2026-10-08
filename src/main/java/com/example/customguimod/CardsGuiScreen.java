@@ -9,6 +9,12 @@ import net.minecraft.client.renderer.RenderItem;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.client.resources.IResource;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.util.HashMap;
+import java.util.Map;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -85,6 +91,7 @@ public class CardsGuiScreen extends GuiScreen {
     private int activeDeck = 0;
     private int buyAmount = 1;
     private static RenderItem renderItem;
+    private final Map<String, int[]> runeTextureSizes = new HashMap<>();
 
     private float layoutScale = 1.0F;
     private boolean compactLayout;
@@ -717,10 +724,47 @@ public class CardsGuiScreen extends GuiScreen {
         RuneInventory.Entry owned = inventory.get(slot);
         if (owned == null) return;
         drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(owned.layer));
-        int iconIndex = EarthRuneCatalog.iconIndex(slot);
-        if (iconIndex >= 0 && iconIndex < CARD_ICONS.length) {
-            drawRuneIcon(CARD_ICONS[iconIndex], x, y, runeSlotWidth, runeSlotHeight, definition.type);
+        drawCustomRuneIcon(definition, x, y, runeSlotWidth, runeSlotHeight);
+    }
+
+    /** Dimensions are cached per screen, including missing/invalid assets. Reopening retries resources. */
+    private void drawCustomRuneIcon(EarthRuneCatalog.Definition definition, int x, int y, int w, int h) {
+        ResourceLocation texture = new ResourceLocation(definition.iconTexture);
+        int[] dimensions = runeTextureSizes.get(definition.iconTexture);
+        if (dimensions == null) {
+            dimensions = new int[]{0, 0};
+            try (IResource resource = mc.getResourceManager().getResource(texture)) {
+                BufferedImage image = ImageIO.read(resource.getInputStream());
+                if (image != null) dimensions = new int[]{image.getWidth(), image.getHeight()};
+            } catch (IOException ignored) {
+                // Optional art: missing or invalid PNGs use the neutral placeholder below.
+            }
+            runeTextureSizes.put(definition.iconTexture, dimensions);
         }
+        int badgeSize = Math.max(3, Math.min(8, Math.min(w, h) / 5));
+        int padding = Math.max(2, Math.round(Math.min(w, h) * 0.10F));
+        int availableW = Math.max(1, w - padding * 2);
+        int availableH = Math.max(1, h - padding * 2 - badgeSize - 2);
+        if (dimensions[0] > 0 && dimensions[1] > 0) {
+            float scale = Math.min(availableW / (float) dimensions[0], availableH / (float) dimensions[1]);
+            int drawW = Math.max(1, Math.round(dimensions[0] * scale));
+            int drawH = Math.max(1, Math.round(dimensions[1] * scale));
+            GlStateManager.color(1, 1, 1, 1);
+            GlStateManager.enableBlend();
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+            mc.getTextureManager().bindTexture(texture);
+            drawScaledCustomSizeModalRect(x + (w - drawW) / 2,
+                    y + padding + (availableH - drawH) / 2, 0, 0,
+                    dimensions[0], dimensions[1], drawW, drawH, dimensions[0], dimensions[1]);
+            GlStateManager.disableBlend();
+        } else {
+            int size = Math.max(1, Math.min(availableW, availableH));
+            int left = x + (w - size) / 2;
+            int top = y + padding + (availableH - size) / 2;
+            drawRect(left, top, left + size, top + size, PANEL_LINE_COLOR);
+            if (size > 4) drawRect(left + 2, top + 2, left + size - 2, top + size - 2, PANEL_BG_COLOR);
+        }
+        drawRuneTypeBadge(definition.type, x + w - 2, y + h - badgeSize - 2, badgeSize, w - 4);
     }
 
     private void drawRuneIcon(ItemStack icon, int x, int y, int w, int h, String type) {
@@ -876,9 +920,8 @@ public class CardsGuiScreen extends GuiScreen {
 
         if (activeDeck == 0) {
             EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(card.cardIndex);
-            int iconIndex = EarthRuneCatalog.iconIndex(card.cardIndex);
-            if (definition != null && iconIndex >= 0 && iconIndex < CARD_ICONS.length) {
-                drawRuneIcon(CARD_ICONS[iconIndex], x - w / 2, y - h / 2, w, h, definition.type);
+            if (definition != null) {
+                drawCustomRuneIcon(definition, x - w / 2, y - h / 2, w, h);
             }
             return;
         }
