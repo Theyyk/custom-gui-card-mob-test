@@ -2,12 +2,15 @@ package com.example.customguimod;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.List;
 
 @SideOnly(Side.CLIENT)
 public class RunePurchaseUiHandler {
@@ -17,6 +20,7 @@ public class RunePurchaseUiHandler {
     private static final int CARD_COST = 100;
 
     private Field inventoryField;
+    private Field buttonListField;
 
     @SubscribeEvent
     public void onInitGui(GuiScreenEvent.InitGuiEvent.Post event) {
@@ -41,7 +45,7 @@ public class RunePurchaseUiHandler {
         Minecraft.getMinecraft().fontRenderer.drawStringWithShadow(hint, x, y, 0xFFFFC83D);
     }
 
-    private void applyState(net.minecraft.client.gui.GuiScreen gui) {
+    private void applyState(GuiScreen gui) {
         if (!(gui instanceof CardsGuiScreen)) return;
         CardsGuiScreen screen = (CardsGuiScreen) gui;
         RuneInventory inventory = getInventory(screen);
@@ -51,7 +55,7 @@ public class RunePurchaseUiHandler {
 
     private GuiButton applyButtons(CardsGuiScreen screen, boolean full) {
         GuiButton buyButton = null;
-        for (GuiButton button : screen.buttonList) {
+        for (GuiButton button : getButtons(screen)) {
             if (button.id == BUY_BUTTON_ID) {
                 buyButton = button;
                 button.enabled = !full;
@@ -61,6 +65,20 @@ public class RunePurchaseUiHandler {
             }
         }
         return buyButton;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<GuiButton> getButtons(CardsGuiScreen screen) {
+        try {
+            if (buttonListField == null) {
+                buttonListField = GuiScreen.class.getDeclaredField("buttonList");
+                buttonListField.setAccessible(true);
+            }
+            return (List<GuiButton>) buttonListField.get(screen);
+        } catch (ReflectiveOperationException e) {
+            CustomGuiMod.logger.warn("Could not read GUI button list for rune purchase UI", e);
+            return Collections.emptyList();
+        }
     }
 
     private RuneInventory getInventory(CardsGuiScreen screen) {
