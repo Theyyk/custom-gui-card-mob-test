@@ -19,8 +19,8 @@ public class MongoManager {
 
     public static void connect() {
         try {
-            client = MongoClients.create("mongodb://localhost:27017");
-            database = client.getDatabase("cristalix_demo");
+            client = MongoClients.create(System.getProperty("customguimod.mongo.uri", "mongodb://localhost:27017"));
+            database = client.getDatabase(System.getProperty("customguimod.mongo.database", "MyProject_build"));
             players = database.getCollection("players");
             CustomGuiMod.logger.info("MongoDB connected!");
         } catch (Exception e) {
