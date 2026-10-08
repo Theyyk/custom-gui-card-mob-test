@@ -84,8 +84,7 @@ public class RunePurchaseUiHandler {
             if (mouseX < x || mouseX >= x + slotWidth || mouseY < y || mouseY >= y + slotHeight) continue;
 
             RuneInventory.Entry owned = inventory.get(rune);
-            if (owned == null) return;
-            if (owned.layer >= RuneInventory.GOLD_RANK) return;
+            if (owned == null || owned.layer >= RuneInventory.GOLD_RANK) return;
 
             NetworkHandler.INSTANCE.sendToServer(new PingPacket("upgrade_rune:" + rune));
             return;
@@ -118,11 +117,15 @@ public class RunePurchaseUiHandler {
     private List<GuiButton> getButtons(CardsGuiScreen screen) {
         try {
             if (buttonListField == null) {
-                buttonListField = ObfuscationReflectionHelper.findField(
-                        GuiScreen.class, "buttonList", "field_146292_n");
+                try {
+                    buttonListField = ObfuscationReflectionHelper.findField(GuiScreen.class, "field_146292_n");
+                } catch (RuntimeException ignored) {
+                    buttonListField = GuiScreen.class.getDeclaredField("buttonList");
+                    buttonListField.setAccessible(true);
+                }
             }
             return (List<GuiButton>) buttonListField.get(screen);
-        } catch (RuntimeException | IllegalAccessException e) {
+        } catch (ReflectiveOperationException | RuntimeException e) {
             CustomGuiMod.logger.warn("Could not read GUI button list for rune purchase UI", e);
             return Collections.emptyList();
         }
