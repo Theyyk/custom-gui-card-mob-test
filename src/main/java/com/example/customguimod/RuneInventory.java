@@ -1,15 +1,18 @@
 package com.example.customguimod;
 
-/** Keeps server records intact and groups them into the visible boost catalog. */
+/** Keeps server records intact and groups them into the visible rune catalog. */
 final class RuneInventory {
-    static final int PURCHASE_LIMIT = 26;
     // Read compatibility only: old purchases may use slots 26-49.
     static final int LEGACY_RECORD_CAPACITY = 50;
     static final int BOOST_TYPE_COUNT = 26;
+    static final int NORMAL_RANK = 1;
+    static final int SILVER_RANK = 2;
+    static final int GOLD_RANK = 3;
 
     static final class Entry {
         final int cardIndex;
         final int layer;
+
         Entry(int cardIndex, int layer) {
             this.cardIndex = cardIndex;
             this.layer = layer;
@@ -20,7 +23,7 @@ final class RuneInventory {
 
     void set(int slot, int cardIndex, int layer) {
         if (slot < 0 || slot >= LEGACY_RECORD_CAPACITY || cardIndex < 0 || cardIndex >= BOOST_TYPE_COUNT) return;
-        slots[slot] = new Entry(cardIndex, layer);
+        slots[slot] = new Entry(cardIndex, clampRank(layer));
     }
 
     Entry get(int slot) {
@@ -61,20 +64,30 @@ final class RuneInventory {
     }
 
     int ownedCatalogSlotCount() {
-        int count = 0;
-        for (int slot = 0; slot < BOOST_TYPE_COUNT; slot++) if (slots[slot] != null) count++;
-        return count;
+        return occupiedTypeCount(BOOST_TYPE_COUNT);
     }
 
+    boolean hasAllCatalogRunes() {
+        return ownedCatalogSlotCount() == BOOST_TYPE_COUNT;
+    }
+
+    boolean canUpgrade(int cardIndex) {
+        Entry entry = getBoost(cardIndex);
+        return hasAllCatalogRunes() && entry != null && entry.layer < GOLD_RANK;
+    }
+
+    /**
+     * Kept for legacy callers. The first element no longer has a purchase-attempt limit;
+     * the GUI/server purchase flow does not use this as a blocker anymore.
+     */
     boolean isPurchaseLimitReached() {
-        return occupiedCount() >= PURCHASE_LIMIT;
+        return false;
     }
 
+    /** Legacy helper for old non-element collections that still use fixed storage slots. */
     static java.util.List<Integer> freePurchaseSlots(java.util.List<Integer> occupiedSlots) {
-        int remaining = PURCHASE_LIMIT - occupiedSlots.size();
         java.util.List<Integer> free = new java.util.ArrayList<>();
-        if (remaining <= 0) return free;
-        for (int slot = 0; slot < PURCHASE_LIMIT && free.size() < remaining; slot++) {
+        for (int slot = 0; slot < BOOST_TYPE_COUNT; slot++) {
             if (!occupiedSlots.contains(slot)) free.add(slot);
         }
         return free;
@@ -82,5 +95,11 @@ final class RuneInventory {
 
     void clear() {
         java.util.Arrays.fill(slots, null);
+    }
+
+    private static int clampRank(int layer) {
+        if (layer <= NORMAL_RANK) return NORMAL_RANK;
+        if (layer >= GOLD_RANK) return GOLD_RANK;
+        return layer;
     }
 }
