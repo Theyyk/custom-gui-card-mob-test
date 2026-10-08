@@ -186,22 +186,34 @@ public class PingPacket implements IMessage {
                 return;
             }
 
-            int amountToBuy = buyAll ? affordable : Math.min(requestedAmount, affordable);
-            if (amountToBuy <= 0) {
+            boolean[] owned = new boolean[RuneInventory.BOOST_TYPE_COUNT];
+            int ownedCount = 0;
+            for (MongoManager.SavedCard card : MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex)) {
+                if (card.cardIndex >= 0 && card.cardIndex < RuneInventory.BOOST_TYPE_COUNT
+                        && !owned[card.cardIndex]) {
+                    owned[card.cardIndex] = true;
+                    ownedCount++;
+                }
+            }
+
+            if (ownedCount >= RuneInventory.BOOST_TYPE_COUNT) {
+                player.sendMessage(new TextComponentString("§eВсе 26 рун собраны. §6Пробудите руну."));
                 NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
                 return;
             }
 
-            boolean[] owned = new boolean[RuneInventory.BOOST_TYPE_COUNT];
-            for (MongoManager.SavedCard card : MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex)) {
-                if (card.cardIndex >= 0 && card.cardIndex < RuneInventory.BOOST_TYPE_COUNT) {
-                    owned[card.cardIndex] = true;
-                }
+            int targetAttempts = buyAll ? affordable : Math.min(requestedAmount, affordable);
+            if (targetAttempts <= 0) {
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
             }
 
+            int attempts = 0;
             int newRunes = 0;
             int duplicates = 0;
-            for (int i = 0; i < amountToBuy; i++) {
+
+            for (int i = 0; i < targetAttempts && ownedCount < RuneInventory.BOOST_TYPE_COUNT; i++) {
+                attempts++;
                 int runeIndex = RANDOM.nextInt(RuneInventory.BOOST_TYPE_COUNT);
                 if (owned[runeIndex]) {
                     duplicates++;
@@ -209,6 +221,7 @@ public class PingPacket implements IMessage {
                 }
 
                 owned[runeIndex] = true;
+                ownedCount++;
                 newRunes++;
                 MongoManager.addCardToDeck(
                         player.getUniqueID(), deckIndex,
@@ -217,7 +230,11 @@ public class PingPacket implements IMessage {
                         new CardPacket(runeIndex, runeIndex, RuneInventory.NORMAL_RANK, true), player);
             }
 
-            finishPurchase(player, balance, requestedAmount, buyAll, amountToBuy, newRunes, duplicates);
+            finishPurchase(player, balance, requestedAmount, buyAll, attempts, newRunes, duplicates);
+
+            if (ownedCount >= RuneInventory.BOOST_TYPE_COUNT) {
+                player.sendMessage(new TextComponentString("§6Коллекция завершена: 26 / 26. Пробудите руну."));
+            }
         }
 
         private void finishPurchase(EntityPlayerMP player, int balance, int requestedAmount, boolean buyAll,
@@ -279,7 +296,7 @@ public class PingPacket implements IMessage {
 
             int currentRank = Math.max(RuneInventory.NORMAL_RANK, ranks[runeIndex]);
             if (currentRank >= RuneInventory.GOLD_RANK) {
-                player.sendMessage(new TextComponentString("§6У этой руны уже золотой ранг."));
+                player.sendMessage(new TextComponentString("§6У этой руны уже продвинутый ранг."));
                 return;
             }
 
@@ -296,8 +313,8 @@ public class PingPacket implements IMessage {
         }
 
         private String rankName(int rank) {
-            if (rank == RuneInventory.SILVER_RANK) return "Серебряная";
-            if (rank == RuneInventory.GOLD_RANK) return "Золотая";
+            if (rank == RuneInventory.SILVER_RANK) return "Улучшенная";
+            if (rank == RuneInventory.GOLD_RANK) return "Продвинутая";
             return "Обычная";
         }
 
