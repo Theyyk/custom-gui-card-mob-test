@@ -1,28 +1,22 @@
 package com.example.customguimod;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiButton;
+
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.client.event.GuiScreenEvent;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.lwjgl.input.Mouse;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
-import java.util.List;
 
 @SideOnly(Side.CLIENT)
 public class RunePurchaseUiHandler {
-    private static final int BUY_BUTTON_ID = 0;
-    private static final int AMOUNT_BUTTON_START_ID = 1;
-    private static final int AMOUNT_BUTTON_END_ID = 5;
-    private static final int CARD_COST = 100;
 
     private Field inventoryField;
-    private Field buttonListField;
+
     private Field activeDeckField;
     private Field runeGridXField;
     private Field runeGridYField;
@@ -56,6 +50,9 @@ public class RunePurchaseUiHandler {
         int mouseX = Mouse.getEventX() * screen.width / Math.max(1, mc.displayWidth);
         int mouseY = screen.height - Mouse.getEventY() * screen.height / Math.max(1, mc.displayHeight) - 1;
 
+        mouseX = screen.canvasMouseX(mouseX);
+        mouseY = screen.canvasMouseY(mouseY);
+
         int gridX = getIntField(screen, getRuneGridXField());
         int gridY = getIntField(screen, getRuneGridYField());
         int slotWidth = getIntField(screen, getRuneSlotWidthField());
@@ -71,6 +68,7 @@ public class RunePurchaseUiHandler {
             int y = gridY + row * (slotHeight + gap);
             if (mouseX < x || mouseX >= x + slotWidth || mouseY < y || mouseY >= y + slotHeight) continue;
 
+            if (!screen.runeMatchesSearch(rune)) return;
             RuneInventory.Entry owned = inventory.get(rune);
             if (owned == null) return;
             NetworkHandler.INSTANCE.sendToServer(new PingPacket("upgrade_rune:" + rune));
@@ -79,34 +77,11 @@ public class RunePurchaseUiHandler {
     }
 
     private void applyState(GuiScreen gui) {
-        if (!(gui instanceof CardsGuiScreen)) return;
-        CardsGuiScreen screen = (CardsGuiScreen) gui;
-        RuneInventory inventory = getInventory(screen);
-        if (inventory == null) return;
-
-        boolean full = inventory.hasAllCatalogRunes();
-        int collectionRank = getCollectionRank(inventory);
-        applyButtons(screen, full, collectionRank);
-    }
-
-    private void applyButtons(CardsGuiScreen screen, boolean full, int collectionRank) {
-        for (GuiButton button : getButtons(screen)) {
-            if (button.id == BUY_BUTTON_ID) {
-                if (!full) {
-                    button.enabled = true;
-                    button.displayString = "Купить руну · " + CARD_COST + " монет";
-                } else {
-                    button.enabled = false;
-                    button.displayString = collectionRank >= RuneInventory.GOLD_RANK
-                            ? "Максимальный ранг"
-                            : "Пробудить руну";
-                }
-            } else if (button.id >= AMOUNT_BUTTON_START_ID && button.id <= AMOUNT_BUTTON_END_ID) {
-                button.enabled = !full;
-            }
+        if (gui instanceof CardsGuiScreen) {
+            // The screen owns labels and IDs; legacy overrides conflict with the new controls.
+            ((CardsGuiScreen) gui).updatePurchaseAvailability();
         }
     }
-
     private int getCollectionRank(RuneInventory inventory) {
         int minRank = RuneInventory.GOLD_RANK;
         boolean found = false;
@@ -117,21 +92,6 @@ public class RunePurchaseUiHandler {
             minRank = Math.min(minRank, entry.layer);
         }
         return found ? minRank : RuneInventory.NORMAL_RANK;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<GuiButton> getButtons(CardsGuiScreen screen) {
-        try {
-            if (buttonListField == null) {
-                buttonListField = ObfuscationReflectionHelper.findField(
-                        GuiScreen.class, "field_146292_n");
-                buttonListField.setAccessible(true);
-            }
-            return (List<GuiButton>) buttonListField.get(screen);
-        } catch (RuntimeException | IllegalAccessException e) {
-            CustomGuiMod.logger.warn("Could not read GUI button list for rune purchase UI", e);
-            return Collections.emptyList();
-        }
     }
 
     private RuneInventory getInventory(CardsGuiScreen screen) {

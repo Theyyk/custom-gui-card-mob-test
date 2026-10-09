@@ -136,16 +136,44 @@ public class CardsGuiScreen extends GuiScreen {
     private net.minecraft.client.gui.GuiTextField searchField;
 
     private boolean matchesSearch(int slot) {
-        if (searchField == null || searchField.getText().isEmpty()) return true;
+        if (searchField == null) return true;
+
+        String query = searchField.getText().trim().toLowerCase(java.util.Locale.ROOT);
+        if (query.isEmpty()) return true;
+
         String name = "";
+        String type = "";
+
         if (activeDeck == 0) {
             EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(slot);
-            if (definition != null) name = definition.name;
+            if (definition != null) {
+                name = definition.name;
+                type = definition.type;
+            }
         } else {
             RuneInventory.Entry entry = getRuneForVisualSlot(slot);
-            if (entry != null && entry.cardIndex >= 0 && entry.cardIndex < CARD_NAMES.length) name = CARD_NAMES[entry.cardIndex];
+            if (entry != null && entry.cardIndex >= 0 && entry.cardIndex < CARD_NAMES.length) {
+                name = CARD_NAMES[entry.cardIndex];
+                type = entry.cardIndex < RUNE_TYPES.length
+                        ? RUNE_TYPES[entry.cardIndex]
+                        : "Ресурс";
+            }
         }
-        return name.toLowerCase(java.util.Locale.ROOT).contains(searchField.getText().toLowerCase(java.util.Locale.ROOT));
+
+        return name.toLowerCase(java.util.Locale.ROOT).contains(query)
+                || type.toLowerCase(java.util.Locale.ROOT).contains(query);
+    }
+
+    int canvasMouseX(int mouseX) {
+        return (int) Math.floor((mouseX - canvasX) / canvasScale);
+    }
+
+    int canvasMouseY(int mouseY) {
+        return (int) Math.floor((mouseY - canvasY) / canvasScale);
+    }
+
+    boolean runeMatchesSearch(int slot) {
+        return matchesSearch(slot);
     }
 
     private void drawCanvasTooltip(List<String> lines, int x, int y) {
@@ -505,7 +533,7 @@ public class CardsGuiScreen extends GuiScreen {
         ));
     }
 
-    private void updatePurchaseAvailability() {
+    void updatePurchaseAvailability() {
         boolean full = inventory.isPurchaseLimitReached();
         for (GuiButton button : buttonList) {
             if (button.id == BUY_BUTTON_ID) {
