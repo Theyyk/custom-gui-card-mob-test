@@ -46,6 +46,8 @@ public class CardsGuiScreen extends GuiScreen {
 
     private static final int BUY_BUTTON_ID = 0;
     private static final int AMOUNT_BUTTON_START_ID = 1;
+    private static final int UPGRADE_PLACEHOLDER_ID = 2;
+    private static final int RUNE_UNIT_PRICE = 100;
     private static final int ELEMENT_BUTTON_START_ID = 100;
     private static final int MAX_ELEMENTS = 8;
 
@@ -401,70 +403,60 @@ public class CardsGuiScreen extends GuiScreen {
         int pad = scaled(7, 3);
         int buttonX = runePanelX + pad;
         int buttonWidth = runePanelWidth - pad * 2;
-        int amountHeight = scaled(17, 13);
-        int buyHeight = scaled(21, 16);
-        int bottom = runePanelY + runePanelHeight - 30;
+        int amountHeight = scaled(21, 16);
+        int buyHeight = scaled(30, 22);
+        int bottom = runePanelY + runePanelHeight - 10;
 
-        int amountRows = compactLayout ? 2 : 1;
-        int amountBlockHeight = amountRows * amountHeight + (amountRows - 1) * 2;
-        int amountY = bottom - amountBlockHeight;
+        int amountY = bottom - amountHeight;
         int buyY = amountY - buyHeight - scaled(4, 2);
         purchaseTop = buyY;
+
+        int purchaseWidth = (buttonWidth - scaled(4, 2)) / 2;
 
         buttonList.add(new CristalixButton(
                 BUY_BUTTON_ID,
                 buttonX,
                 buyY,
-                buttonWidth,
+                purchaseWidth,
                 buyHeight,
                 "Купить руну"
         ));
 
-        String[] labels = compactLayout
-                ? new String[]{"1", "5", "10", "100", "Все"}
-                : new String[]{"x1", "x5", "x10", "x100", "xВсе"};
+        CristalixButton upgrade = new CristalixButton(
+                UPGRADE_PLACEHOLDER_ID,
+                buttonX + purchaseWidth + scaled(4, 2),
+                buyY,
+                buttonWidth - purchaseWidth - scaled(4, 2),
+                buyHeight,
+                "Улучшить руну"
+        );
+        upgrade.enabled = false;
+        buttonList.add(upgrade);
 
-        if (compactLayout) {
-            int gap = 2;
-            int topWidth = (buttonWidth - gap * 2) / 3;
-            for (int i = 0; i < 3; i++) {
-                buttonList.add(new CristalixButton(
-                        AMOUNT_BUTTON_START_ID + i,
-                        buttonX + i * (topWidth + gap), amountY,
-                        topWidth, amountHeight, labels[i]
-                ));
-            }
-
-            int bottomWidth = (buttonWidth - gap) / 2;
-            for (int i = 0; i < 2; i++) {
-                int index = i + 3;
-                buttonList.add(new CristalixButton(
-                        AMOUNT_BUTTON_START_ID + index,
-                        buttonX + i * (bottomWidth + gap), amountY + amountHeight + 2,
-                        bottomWidth, amountHeight, labels[index]
-                ));
-            }
-        } else {
-            int gap = scaled(2, 1);
-            int amountButtonWidth = Math.max(10,
-                    (buttonWidth - gap * (labels.length - 1)) / labels.length);
-            for (int i = 0; i < labels.length; i++) {
-                buttonList.add(new CristalixButton(
-                        AMOUNT_BUTTON_START_ID + i,
-                        buttonX + i * (amountButtonWidth + gap), amountY,
-                        amountButtonWidth, amountHeight, labels[i]
-                ));
-            }
-        }
+        buttonList.add(new CristalixButton(
+                AMOUNT_BUTTON_START_ID,
+                buttonX,
+                amountY,
+                scaled(52, 36),
+                amountHeight,
+                "x" + buyAmount
+        ));
 
         String search = searchField == null ? "" : searchField.getText();
-        searchField = new net.minecraft.client.gui.GuiTextField(400, fontRenderer,
-                runePanelX + 12, runePanelY + 30, runePanelWidth - 24, 19);
+        searchField = new net.minecraft.client.gui.GuiTextField(
+                400,
+                fontRenderer,
+                runePanelX + 12,
+                runePanelY + 30,
+                runePanelWidth - 24,
+                19
+        );
         searchField.setEnableBackgroundDrawing(false);
         searchField.setTextColor(TEXT_COLOR);
         searchField.setDisabledTextColour(MUTED_TEXT_COLOR);
         searchField.setMaxStringLength(64);
         searchField.setText(search);
+
         rebuildElementButtons();
         rebuildNavigationButtons();
         updateAmountButtonSelection();
@@ -535,27 +527,42 @@ public class CardsGuiScreen extends GuiScreen {
 
     void updatePurchaseAvailability() {
         boolean full = inventory.isPurchaseLimitReached();
+
         for (GuiButton button : buttonList) {
             if (button.id == BUY_BUTTON_ID) {
+                int collectionRank = RuneInventory.GOLD_RANK;
+
+                for (int slot = 0; slot < RuneInventory.BOOST_TYPE_COUNT; slot++) {
+                    RuneInventory.Entry entry = inventory.get(slot);
+                    if (entry != null) {
+                        collectionRank = Math.min(collectionRank, entry.layer);
+                    }
+                }
+
                 button.enabled = !full;
-                button.displayString = full ? "Лимит достигнут" : "Купить руну";
-            } else if (button.id >= AMOUNT_BUTTON_START_ID && button.id < AMOUNT_BUTTON_START_ID + 5) {
+
+                if (full) {
+                    button.displayString = collectionRank >= RuneInventory.GOLD_RANK
+                            ? "Максимальный ранг"
+                            : "Пробудить руну";
+                } else {
+                    button.displayString = "Купить: "
+                            + (RUNE_UNIT_PRICE * buyAmount)
+                            + " монет";
+                }
+            } else if (button.id == AMOUNT_BUTTON_START_ID) {
                 button.enabled = !full;
             }
         }
     }
 
     private void updateAmountButtonSelection() {
-        int[] amounts = {1, 5, 10, 100, Integer.MAX_VALUE};
-        for (GuiButton guiButton : buttonList) {
-            if (!(guiButton instanceof CristalixButton)) continue;
-            if (guiButton.id < AMOUNT_BUTTON_START_ID
-                    || guiButton.id >= AMOUNT_BUTTON_START_ID + amounts.length) continue;
-
-            ((CristalixButton) guiButton).setSelected(
-                    buyAmount == amounts[guiButton.id - AMOUNT_BUTTON_START_ID]
-            );
+        for (GuiButton button : buttonList) {
+            if (button.id == AMOUNT_BUTTON_START_ID) {
+                button.displayString = "x" + buyAmount;
+            }
         }
+        updatePurchaseAvailability();
     }
 
     @Override
@@ -580,14 +587,17 @@ public class CardsGuiScreen extends GuiScreen {
         }
 
         if (button.id == BUY_BUTTON_ID) {
-            String amount = buyAmount == Integer.MAX_VALUE ? "all" : String.valueOf(buyAmount);
-            NetworkHandler.INSTANCE.sendToServer(new PingPacket("buy_cards:" + amount));
+            NetworkHandler.INSTANCE.sendToServer(
+                    new PingPacket("buy_cards:" + buyAmount)
+            );
             return;
         }
 
-        if (button.id >= AMOUNT_BUTTON_START_ID && button.id < AMOUNT_BUTTON_START_ID + 5) {
-            int[] amounts = {1, 5, 10, 100, Integer.MAX_VALUE};
-            buyAmount = amounts[button.id - AMOUNT_BUTTON_START_ID];
+        if (button.id == AMOUNT_BUTTON_START_ID) {
+            buyAmount = buyAmount == 1 ? 5
+                    : buyAmount == 5 ? 10
+                    : buyAmount == 10 ? 100
+                    : 1;
             updateAmountButtonSelection();
         }
     }
@@ -649,18 +659,58 @@ public class CardsGuiScreen extends GuiScreen {
         y += scaled(18, 13);
         drawDivider(x, y, textW);
         y += scaled(9, 6);
-        drawStatLine(x, y, "Клики", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textW);
+
+        double baseDamage = mc.player == null
+                ? 1.0D
+                : mc.player.getEntityAttribute(
+                        net.minecraft.entity.SharedMonsterAttributes.ATTACK_DAMAGE
+                ).getAttributeValue();
+
+        double damage = baseDamage + ClientPlayerStats.getTotalDamage();
+
+        String damageText = damage == Math.rint(damage)
+                ? String.valueOf((long) damage)
+                : String.format(java.util.Locale.ROOT, "%.2f", damage)
+                        .replaceAll("0+$", "")
+                        .replaceAll("\\.$", "");
+
+        drawStatLine(
+                x,
+                y,
+                "Урон за клик",
+                damageText,
+                0xFFFF7272,
+                textW
+        );
 
         int resourcesY = leftPanelY + leftPanelHeight + 11;
         drawPanel(leftPanelX, resourcesY, leftPanelWidth, 68);
         y = resourcesY + pad;
+
         drawFittedString("РЕСУРСЫ", x, y, textW, TEXT_COLOR, true);
         y += scaled(18, 13);
         drawDivider(x, y, textW);
         y += scaled(9, 6);
-        drawStatLine(x, y, "Монеты", String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D, textW);
+
+        drawStatLine(
+                x,
+                y,
+                "Монеты",
+                String.valueOf(ClientPlayerStats.getCoins()),
+                0xFFFFC83D,
+                textW
+        );
+
         y += scaled(16, 12);
-        drawStatLine(x, y, "Кристаллы", String.valueOf(ClientPlayerStats.getCrystals()), 0xFF56D7E8, textW);
+
+        drawStatLine(
+                x,
+                y,
+                "Кристаллы",
+                String.valueOf(ClientPlayerStats.getCrystals()),
+                0xFF56D7E8,
+                textW
+        );
     }
 
     private void drawStatLine(int x, int y, String name, String value, int color, int availableWidth) {
