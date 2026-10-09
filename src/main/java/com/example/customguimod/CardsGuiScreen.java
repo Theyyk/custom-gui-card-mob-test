@@ -230,11 +230,11 @@ public class CardsGuiScreen extends GuiScreen {
 
             String label = displayString;
             int maxWidth = Math.max(1, width - 6);
-            if (mc.fontRenderer.getStringWidth(label) > maxWidth) {
-                label = mc.fontRenderer.trimStringToWidth(label, maxWidth);
+            if (GuiFontRenderer.get(mc).getStringWidth(label) > maxWidth) {
+                label = GuiFontRenderer.get(mc).trimStringToWidth(label, maxWidth);
             }
 
-            drawCenteredString(mc.fontRenderer, label,
+            drawCenteredString(GuiFontRenderer.get(mc), label,
                     x + width / 2,
                     y + (height - 8) / 2,
                     textColor);
@@ -298,6 +298,7 @@ public class CardsGuiScreen extends GuiScreen {
     @Override
     public void initGui() {
         buttonList.clear();
+        fontRenderer = GuiFontRenderer.get(mc);
 
         if (renderItem == null) {
             renderItem = Minecraft.getMinecraft().getRenderItem();
@@ -657,24 +658,17 @@ public class CardsGuiScreen extends GuiScreen {
         // The reference has five positions across, three side rows and a bottom row.
         String[] upper = {"Основная рука", "Дополнительная рука", "Талисман", "Реликвия", "Артефакт"};
         for (int i = 0; i < 5; i++) {
-            ItemStack stack = mc.player == null ? ItemStack.EMPTY
-                    : i == 0 ? mc.player.getHeldItemMainhand()
-                    : i == 1 ? mc.player.getHeldItemOffhand() : ItemStack.EMPTY;
-            drawEquipmentSlot(left + i * (slot + gap), top + 9, slot, upper[i], stack, i >= 2, mouseX, mouseY);
+            drawEquipmentSlot(left + i * (slot + gap), top + 9, slot, upper[i], mouseX, mouseY);
         }
-        String[] armor = {"Шлем", "Нагрудник", "Поножи", "Ботинки"};
+        String[] armor = {"Шлем", "Нагрудник", "Поножи"};
         for (int i = 0; i < 3; i++) {
-            ItemStack stack = mc.player == null ? ItemStack.EMPTY : mc.player.inventory.armorInventory.get(3 - i);
-            drawEquipmentSlot(left, top + 71 + i * 62, slot, armor[i], stack, false, mouseX, mouseY);
+            drawEquipmentSlot(left, top + 71 + i * 62, slot, armor[i], mouseX, mouseY);
             drawEquipmentSlot(left + 248, top + 71 + i * 62, slot,
-                    i == 0 ? "Ботинки" : i == 1 ? "Аксессуар" : "Дополнительный артефакт",
-                    i == 0 && mc.player != null ? mc.player.inventory.armorInventory.get(0) : ItemStack.EMPTY,
-                    i == 2, mouseX, mouseY);
+                    i == 0 ? "Ботинки" : i == 1 ? "Аксессуар" : "Дополнительный артефакт", mouseX, mouseY);
         }
         for (int i = 0; i < 5; i++) {
             drawEquipmentSlot(left + i * 62, top + 257, slot,
-                    i == 2 ? "Особый предмет" : "Дополнительное снаряжение",
-                    ItemStack.EMPTY, i != 1 && i != 2, mouseX, mouseY);
+                    i == 2 ? "Особый предмет" : "Дополнительное снаряжение", mouseX, mouseY);
         }
         int previewX = left + 62, previewY = top + 71;
         drawSection(previewX, previewY, 177, 177);
@@ -703,26 +697,12 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
-    private void drawEquipmentSlot(int x, int y, int size, String name, ItemStack stack,
-                                   boolean locked, int mouseX, int mouseY) {
+    private void drawEquipmentSlot(int x, int y, int size, String name, int mouseX, int mouseY) {
         boolean hover = mouseX >= x && mouseX < x + size && mouseY >= y && mouseY < y + size;
         drawSurface(x, y, size, size, SLOT_BG_COLOR, hover ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
-        if (locked) {
-            drawLock(x + size / 2 - 5, y + size / 2 - 5);
-        } else if (!stack.isEmpty()) {
-            drawRankCorners(x, y, size, size, SILVER_COLOR);
-            GlStateManager.pushMatrix();
-            GlStateManager.translate(x + 10, y + 10, 0);
-            GlStateManager.scale(2, 2, 1);
-            renderItem.renderItemAndEffectIntoGUI(stack, 0, 0);
-            GlStateManager.popMatrix();
-        } else {
-            drawRect(x + 5, y + 5, x + 14, y + 6, PANEL_LINE_COLOR);
-            drawRect(x + 5, y + 5, x + 6, y + 14, PANEL_LINE_COLOR);
-        }
-        if (hover) equipmentTooltip = name + (locked ? " — недоступно" : stack.isEmpty() ? " — пусто" : " — " + stack.getDisplayName());
+        drawLock(x + size / 2 - 5, y + size / 2 - 5);
+        if (hover) equipmentTooltip = name + " — недоступно";
     }
-
     private void drawLock(int x, int y) {
         drawRect(x + 2, y, x + 8, y + 2, LOCK_COLOR);
         drawRect(x + 1, y + 2, x + 3, y + 5, LOCK_COLOR);
