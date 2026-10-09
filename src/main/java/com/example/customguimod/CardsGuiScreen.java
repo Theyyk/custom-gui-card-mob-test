@@ -617,37 +617,41 @@ public class CardsGuiScreen extends GuiScreen {
         Minecraft mc = Minecraft.getMinecraft();
         int headerH = scaled(52, 30);
 
-        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, headerH);
+        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, centerPanelHeight);
+
         drawFittedString(mc.player == null ? "ИГРОК" : mc.player.getName(),
                 innerX, centerPanelY + pad, innerW, TEXT_COLOR, true);
         drawFittedString("ПЕРСОНАЖ / СНАРЯЖЕНИЕ", innerX,
                 centerPanelY + pad + scaled(18, 11), innerW, MUTED_TEXT_COLOR, false);
+        drawDivider(innerX, centerPanelY + headerH - scaled(4, 2), innerW);
 
-        int equipmentY = centerPanelY + headerH + scaled(7, 3);
+        int equipmentY = centerPanelY + headerH + scaled(4, 2);
         int purchaseLabelY = purchaseTop - scaled(18, 12);
-        int equipmentBottom = purchaseLabelY - scaled(8, 4);
-        int equipmentPanelHeight = Math.max(scaled(104, 74), equipmentBottom - equipmentY);
-        drawPanel(centerPanelX, equipmentY, centerPanelWidth, equipmentPanelHeight);
+        int equipmentBottom = purchaseLabelY - scaled(7, 3);
+        int equipmentHeight = Math.max(1, equipmentBottom - equipmentY);
 
         int gap = scaled(6, 2);
         int topY = equipmentY + pad;
-        int equipmentHeight = Math.max(1, equipmentPanelHeight - pad * 2);
+        int usableEquipmentHeight = Math.max(1, equipmentHeight - pad * 2);
         int slot = Math.max(1, Math.min(Math.min(scaled(50, 14), (innerW - gap * 4) / 5),
-                Math.max(1, (equipmentHeight - gap * 4) / 5)));
+                Math.max(1, (usableEquipmentHeight - gap * 4) / 5)));
         int rowWidth = slot * 5 + gap * 4;
         int cx = centerPanelX + centerPanelWidth / 2;
         int rowX = cx - rowWidth / 2;
         int bottomY = topY + 4 * (slot + gap);
+
         for (int i = 0; i < 5; i++) {
             drawEquipmentSlot(rowX + i * (slot + gap), topY, slot);
             drawEquipmentSlot(rowX + i * (slot + gap), bottomY, slot);
         }
+
         int bodyTop = topY + slot + gap;
         int bodyH = slot * 3 + gap * 2;
         for (int i = 0; i < 3; i++) {
             drawEquipmentSlot(rowX, bodyTop + i * (slot + gap), slot);
             drawEquipmentSlot(rowX + rowWidth - slot, bodyTop + i * (slot + gap), slot);
         }
+
         int previewX = rowX + slot + gap;
         int previewW = rowWidth - (slot + gap) * 2;
         drawSection(previewX, bodyTop, previewW, bodyH);
@@ -661,10 +665,8 @@ public class CardsGuiScreen extends GuiScreen {
             GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         }
 
-        int purchasePanelY = purchaseLabelY - scaled(4, 2);
-        int purchasePanelBottom = centerPanelY + centerPanelHeight;
-        drawPanel(centerPanelX, purchasePanelY, centerPanelWidth,
-                Math.max(1, purchasePanelBottom - purchasePanelY));
+        int purchaseDividerY = purchaseLabelY - scaled(5, 2);
+        drawDivider(innerX, purchaseDividerY, innerW);
         drawFittedString("ПОКУПКА РУН", innerX, purchaseLabelY,
                 innerW, MUTED_TEXT_COLOR, false);
         drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
