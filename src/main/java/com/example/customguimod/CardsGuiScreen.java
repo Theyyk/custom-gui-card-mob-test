@@ -303,9 +303,9 @@ public class CardsGuiScreen extends GuiScreen {
         guiX = (width - guiWidth) / 2;
         guiY = (height - guiHeight) / 2;
 
-        int navGap = scaled(4, 2);
-        navPanelWidth = scaled(28, 20);
-        navPanelHeight = guiHeight;
+        int navGap = scaled(5, 2);
+        navPanelWidth = scaled(30, 20);
+        navPanelHeight = Math.min(guiHeight, scaled(315, 190));
         navPanelX = guiX + guiWidth - navPanelWidth;
         navPanelY = guiY;
 
@@ -314,20 +314,20 @@ public class CardsGuiScreen extends GuiScreen {
         mainWidth = guiWidth - navPanelWidth - navGap;
         mainHeight = guiHeight;
 
-        int innerGap = scaled(3, 1);
+        int innerGap = scaled(7, 3);
         int usableWidth = mainWidth - innerGap * 2;
 
-        leftPanelWidth = usableWidth * 26 / 100;
-        centerPanelWidth = usableWidth * 26 / 100;
+        leftPanelWidth = usableWidth * 23 / 100;
+        centerPanelWidth = usableWidth * 30 / 100;
         runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
 
         leftPanelX = mainX;
         leftPanelY = mainY;
-        leftPanelHeight = Math.min(mainHeight, scaled(118, 84));
+        leftPanelHeight = Math.min(mainHeight, scaled(145, 96));
 
         centerPanelX = leftPanelX + leftPanelWidth + innerGap;
         centerPanelY = mainY;
-        centerPanelHeight = Math.min(mainHeight, scaled(450, 150));
+        centerPanelHeight = Math.min(mainHeight, scaled(430, 210));
 
         runePanelX = centerPanelX + centerPanelWidth + innerGap;
         runePanelY = mainY;
@@ -340,16 +340,21 @@ public class CardsGuiScreen extends GuiScreen {
         int pad = scaled(8, 4);
         int topReserved = scaled(58, 42);
         int availableWidth = Math.max(1, runePanelWidth - pad * 2);
-        int availableHeight = Math.max(1, runePanelHeight - topReserved - scaled(10, 6));
         runeSlotGap = scaled(5, 2);
         runeColumns = 10;
         runeRows = (VISIBLE_RUNE_SLOTS + runeColumns - 1) / runeColumns;
         int sizeByWidth = (availableWidth - runeSlotGap * (runeColumns - 1)) / runeColumns;
-        int sizeByHeight = (availableHeight - runeSlotGap * (runeRows - 1)) / runeRows;
-        runeSlotWidth = Math.max(1, Math.min(sizeByWidth, sizeByHeight));
+        int maxSlot = compactLayout ? scaled(42, 14) : scaled(50, 18);
+        runeSlotWidth = Math.max(1, Math.min(sizeByWidth, maxSlot));
         runeSlotHeight = runeSlotWidth;
         runeGridX = runePanelX + pad;
         runeGridY = runePanelY + topReserved;
+
+        int contentHeight = topReserved
+                + runeRows * runeSlotHeight
+                + (runeRows - 1) * runeSlotGap
+                + scaled(12, 7);
+        runePanelHeight = Math.min(mainHeight, contentHeight);
     }
 
     private void rebuildControls() {
@@ -461,6 +466,7 @@ public class CardsGuiScreen extends GuiScreen {
 
         for (int i = 0; i < 5; i++) {
             y += buttonSize + gap;
+            if (y + buttonSize >= navPanelY + navPanelHeight - buttonSize * 2) break;
             buttonList.add(new NavButton(
                     NAV_PLACEHOLDER_START_ID + i, x, y, buttonSize, buttonSize,
                     new ItemStack(new net.minecraft.item.Item[]{Items.GOLDEN_APPLE, Items.POTIONITEM,
@@ -470,10 +476,13 @@ public class CardsGuiScreen extends GuiScreen {
 
         int closeSize = buttonSize;
         int closeY = navPanelY + navPanelHeight - pad - closeSize;
-        buttonList.add(new NavButton(
-                NAV_PLACEHOLDER_START_ID + 5, x, closeY - buttonSize - gap, buttonSize, buttonSize,
-                new ItemStack(Items.REDSTONE), false, false
-        ));
+        int devY = closeY - buttonSize - gap;
+        if (devY > y + gap) {
+            buttonList.add(new NavButton(
+                    NAV_PLACEHOLDER_START_ID + 5, x, devY, buttonSize, buttonSize,
+                    new ItemStack(Items.REDSTONE), false, false
+            ));
+        }
         buttonList.add(new CristalixButton(
                 CLOSE_BUTTON_ID, x, closeY, closeSize, closeSize, "X"
         ));
@@ -606,21 +615,25 @@ public class CardsGuiScreen extends GuiScreen {
         int innerX = centerPanelX + pad;
         int innerW = centerPanelWidth - pad * 2;
         Minecraft mc = Minecraft.getMinecraft();
-        int headerH = scaled(60, 30);
+        int headerH = scaled(52, 30);
+
         drawPanel(centerPanelX, centerPanelY, centerPanelWidth, headerH);
         drawFittedString(mc.player == null ? "ИГРОК" : mc.player.getName(),
                 innerX, centerPanelY + pad, innerW, TEXT_COLOR, true);
-        drawFittedString("СНАРЯЖЕНИЕ", innerX,
-                centerPanelY + pad + scaled(19, 12), innerW, MUTED_TEXT_COLOR, false);
-        int equipmentY = centerPanelY + headerH + scaled(8, 4);
-        drawPanel(centerPanelX, equipmentY, centerPanelWidth,
-                centerPanelY + centerPanelHeight - equipmentY);
+        drawFittedString("ПЕРСОНАЖ / СНАРЯЖЕНИЕ", innerX,
+                centerPanelY + pad + scaled(18, 11), innerW, MUTED_TEXT_COLOR, false);
+
+        int equipmentY = centerPanelY + headerH + scaled(7, 3);
+        int purchaseLabelY = purchaseTop - scaled(18, 12);
+        int equipmentBottom = purchaseLabelY - scaled(8, 4);
+        int equipmentPanelHeight = Math.max(scaled(104, 74), equipmentBottom - equipmentY);
+        drawPanel(centerPanelX, equipmentY, centerPanelWidth, equipmentPanelHeight);
 
         int gap = scaled(6, 2);
         int topY = equipmentY + pad;
-        int equipmentHeight = purchaseTop - topY - scaled(30, 16);
-        int slot = Math.max(1, Math.min(Math.min(scaled(54, 14), (innerW - gap * 4) / 5),
-                (equipmentHeight - gap * 4) / 5));
+        int equipmentHeight = Math.max(1, equipmentPanelHeight - pad * 2);
+        int slot = Math.max(1, Math.min(Math.min(scaled(50, 14), (innerW - gap * 4) / 5),
+                Math.max(1, (equipmentHeight - gap * 4) / 5)));
         int rowWidth = slot * 5 + gap * 4;
         int cx = centerPanelX + centerPanelWidth / 2;
         int rowX = cx - rowWidth / 2;
@@ -647,7 +660,12 @@ public class CardsGuiScreen extends GuiScreen {
                     cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
             GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         }
-        drawFittedString("ПОКУПКА РУН", innerX, purchaseTop - scaled(17, 12),
+
+        int purchasePanelY = purchaseLabelY - scaled(4, 2);
+        int purchasePanelBottom = centerPanelY + centerPanelHeight;
+        drawPanel(centerPanelX, purchasePanelY, centerPanelWidth,
+                Math.max(1, purchasePanelBottom - purchasePanelY));
+        drawFittedString("ПОКУПКА РУН", innerX, purchaseLabelY,
                 innerW, MUTED_TEXT_COLOR, false);
         drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
     }
