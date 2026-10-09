@@ -136,6 +136,7 @@ public class CardsGuiScreen extends GuiScreen {
     private int runeGridY;
 
     private net.minecraft.client.gui.GuiTextField searchField;
+    private boolean guiBlurLoaded;
 
     private boolean matchesSearch(int slot) {
         if (searchField == null) return true;
@@ -339,6 +340,18 @@ public class CardsGuiScreen extends GuiScreen {
         updateLayout();
         rebuildControls();
 
+        if (!mc.entityRenderer.isShaderActive()) {
+            try {
+                mc.entityRenderer.loadShader(
+                        new ResourceLocation("customguimod", "shaders/post/gui_blur.json")
+                );
+                guiBlurLoaded = true;
+            } catch (RuntimeException e) {
+                guiBlurLoaded = false;
+                CustomGuiMod.logger.warn("Could not enable GUI blur shader", e);
+            }
+        }
+
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("get_player_stats"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_decks"));
         NetworkHandler.INSTANCE.sendToServer(new PingPacket("load_cards"));
@@ -370,8 +383,13 @@ public class CardsGuiScreen extends GuiScreen {
         centerPanelWidth = 319; centerPanelHeight = 482;
         runePanelX = 660; runePanelY = 24;
         runePanelWidth = 575; runePanelHeight = 624;
-        navPanelX = 1244; navPanelY = 24;
-        navPanelWidth = 30; navPanelHeight = 624;
+        navPanelWidth = 30;
+        navPanelHeight = 624;
+        navPanelY = 24;
+
+        int viewportRight = Math.round((width - canvasX) / canvasScale);
+        navPanelX = viewportRight - navPanelWidth - 6;
+
         updateRuneGridLayout();
     }
     private void updateRuneGridLayout() {
@@ -1079,6 +1097,16 @@ public class CardsGuiScreen extends GuiScreen {
         // Tooltips use the reference canvas bounds, too.
         if (equipmentTooltip != null) drawCanvasTooltip(java.util.Collections.singletonList(equipmentTooltip), mouseX, mouseY);
         GlStateManager.popMatrix();
+    }
+
+    @Override
+    public void onGuiClosed() {
+        super.onGuiClosed();
+
+        if (guiBlurLoaded) {
+            mc.entityRenderer.stopUseShader();
+            guiBlurLoaded = false;
+        }
     }
 
     private int getRankColor(int layer) {
