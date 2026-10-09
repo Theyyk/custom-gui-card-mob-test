@@ -24,17 +24,21 @@ public class CardsGuiScreen extends GuiScreen {
     private static final int GUI_MAX_HEIGHT = 620;
     private static final int GUI_OUTER_MARGIN = 10;
 
-    private static final int OVERLAY_COLOR = 0x50000000;
-    private static final int PANEL_BG_COLOR = 0xE10B0E12;
-    private static final int PANEL_BG_SOFT = 0xD211151A;
-    private static final int PANEL_BORDER_COLOR = 0xFF252B31;
-    private static final int PANEL_LINE_COLOR = 0xFF3B434B;
-    private static final int SLOT_BG_COLOR = 0xEA0C1014;
-    private static final int SLOT_BORDER_COLOR = 0xFF2B3239;
-    private static final int SLOT_HOVER_COLOR = 0xFF56616D;
-    private static final int SELECTED_COLOR = 0xFF2D7FD6;
-    private static final int TEXT_COLOR = 0xFFF1F1F1;
-    private static final int MUTED_TEXT_COLOR = 0xFF858B92;
+    private static final int OVERLAY_COLOR = 0x38000000;
+    private static final int PANEL_BG_COLOR = 0xA6090B0D;
+    private static final int PANEL_BG_SOFT = 0x24090B0D;
+    private static final int PANEL_BORDER_COLOR = 0x70343A40;
+    private static final int PANEL_LINE_COLOR = 0x503B4147;
+    private static final int SLOT_BG_COLOR = 0x5007090B;
+    private static final int SLOT_BORDER_COLOR = 0x74343A40;
+    private static final int SLOT_HOVER_COLOR = 0xC0586067;
+    private static final int SELECTED_COLOR = 0xD0447DA4;
+    private static final int SELECTED_BG_COLOR = 0x80305270;
+    private static final int BUTTON_BG_COLOR = 0x40090B0D;
+    private static final int DISABLED_BG_COLOR = 0x20090B0D;
+    private static final int TEXT_COLOR = 0xFFE0E0E0;
+    private static final int MUTED_TEXT_COLOR = 0xFF7C8084;
+    private static final int LOCK_COLOR = 0xFF484C50;
 
     private static final int NORMAL_COLOR = 0xFF2D7FD6;
     private static final int SILVER_COLOR = 0xFFC9CDD2;
@@ -218,15 +222,11 @@ public class CardsGuiScreen extends GuiScreen {
 
             hovered = mouseX >= x && mouseY >= y && mouseX < x + width && mouseY < y + height;
 
-            int border = selected ? SELECTED_COLOR : (hovered ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
-            int background = selected ? 0xE11A2E43 : (enabled ? 0xE10C1014 : 0xAA080A0C);
+            int border = selected ? SELECTED_COLOR : (hovered && enabled ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
+            int background = selected ? SELECTED_BG_COLOR : (enabled ? BUTTON_BG_COLOR : DISABLED_BG_COLOR);
             int textColor = enabled ? TEXT_COLOR : MUTED_TEXT_COLOR;
 
-            drawRect(x, y, x + width, y + height, border);
-            drawRect(x + 1, y + 1, x + width - 1, y + height - 1, background);
-            if (selected) {
-                drawRect(x + 1, y + height - 2, x + width - 1, y + height - 1, SELECTED_COLOR);
-            }
+            drawSurface(x, y, width, height, background, border);
 
             String label = displayString;
             int maxWidth = Math.max(1, width - 6);
@@ -280,14 +280,9 @@ public class CardsGuiScreen extends GuiScreen {
 
             hovered = mouseX >= x && mouseY >= y && mouseX < x + width && mouseY < y + height;
             int border = selected ? SELECTED_COLOR : (hovered && enabled ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
-            int background = selected ? 0xE11A2E43 : (enabled ? 0xE10C1014 : 0xAA090B0D);
+            int background = selected ? SELECTED_BG_COLOR : (enabled ? BUTTON_BG_COLOR : DISABLED_BG_COLOR);
 
-            drawRect(x, y, x + width, y + height, border);
-            drawRect(x + 1, y + 1, x + width - 1, y + height - 1, background);
-
-            if (selected) {
-                drawRect(x + width - 2, y + 2, x + width - 1, y + height - 2, SELECTED_COLOR);
-            }
+            drawSurface(x, y, width, height, background, border);
 
             if (!icon.isEmpty()) {
                 GlStateManager.pushMatrix();
@@ -435,7 +430,10 @@ public class CardsGuiScreen extends GuiScreen {
 
         String search = searchField == null ? "" : searchField.getText();
         searchField = new net.minecraft.client.gui.GuiTextField(400, fontRenderer,
-                runePanelX + 8, runePanelY + 30, runePanelWidth - 16, 19);
+                runePanelX + 12, runePanelY + 30, runePanelWidth - 24, 19);
+        searchField.setEnableBackgroundDrawing(false);
+        searchField.setTextColor(TEXT_COLOR);
+        searchField.setDisabledTextColour(MUTED_TEXT_COLOR);
         searchField.setMaxStringLength(64);
         searchField.setText(search);
         rebuildElementButtons();
@@ -565,16 +563,30 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
+    // Fill and stroke separately: a translucent border must not darken the whole interior.
+    private static void drawSurface(int x, int y, int w, int h, int background, int border) {
+        if (w < 6 || h < 6) return;
+        drawRect(x, y + 2, x + w, y + h - 2, background);
+        drawRect(x + 2, y, x + w - 2, y + 1, background);
+        drawRect(x + 1, y + 1, x + w - 1, y + 2, background);
+        drawRect(x + 1, y + h - 2, x + w - 1, y + h - 1, background);
+        drawRect(x + 2, y + h - 1, x + w - 2, y + h, background);
+        drawRect(x + 2, y, x + w - 2, y + 1, border);
+        drawRect(x + 2, y + h - 1, x + w - 2, y + h, border);
+        drawRect(x, y + 2, x + 1, y + h - 2, border);
+        drawRect(x + w - 1, y + 2, x + w, y + h - 2, border);
+        drawRect(x + 1, y + 1, x + 2, y + 2, border);
+        drawRect(x + w - 2, y + 1, x + w - 1, y + 2, border);
+        drawRect(x + 1, y + h - 2, x + 2, y + h - 1, border);
+        drawRect(x + w - 2, y + h - 2, x + w - 1, y + h - 1, border);
+    }
+
     private void drawPanel(int x, int y, int w, int h) {
-        if (w <= 0 || h <= 0) return;
-        drawRect(x, y, x + w, y + h, PANEL_BORDER_COLOR);
-        drawRect(x + 1, y + 1, x + w - 1, y + h - 1, PANEL_BG_COLOR);
+        drawSurface(x, y, w, h, PANEL_BG_COLOR, PANEL_BORDER_COLOR);
     }
 
     private void drawSection(int x, int y, int w, int h) {
-        if (w <= 2 || h <= 2) return;
-        drawRect(x, y, x + w, y + h, PANEL_BORDER_COLOR);
-        drawRect(x + 1, y + 1, x + w - 1, y + h - 1, PANEL_BG_SOFT);
+        drawSurface(x, y, w, h, PANEL_BG_SOFT, PANEL_BORDER_COLOR);
     }
 
     private void drawDivider(int x, int y, int w) {
@@ -694,8 +706,7 @@ public class CardsGuiScreen extends GuiScreen {
     private void drawEquipmentSlot(int x, int y, int size, String name, ItemStack stack,
                                    boolean locked, int mouseX, int mouseY) {
         boolean hover = mouseX >= x && mouseX < x + size && mouseY >= y && mouseY < y + size;
-        drawRect(x, y, x + size, y + size, hover ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
-        drawRect(x + 1, y + 1, x + size - 1, y + size - 1, SLOT_BG_COLOR);
+        drawSurface(x, y, size, size, SLOT_BG_COLOR, hover ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
         if (locked) {
             drawLock(x + size / 2 - 5, y + size / 2 - 5);
         } else if (!stack.isEmpty()) {
@@ -713,10 +724,10 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawLock(int x, int y) {
-        drawRect(x + 2, y, x + 8, y + 2, MUTED_TEXT_COLOR);
-        drawRect(x + 1, y + 2, x + 3, y + 5, MUTED_TEXT_COLOR);
-        drawRect(x + 7, y + 2, x + 9, y + 5, MUTED_TEXT_COLOR);
-        drawRect(x, y + 5, x + 10, y + 12, PANEL_LINE_COLOR);
+        drawRect(x + 2, y, x + 8, y + 2, LOCK_COLOR);
+        drawRect(x + 1, y + 2, x + 3, y + 5, LOCK_COLOR);
+        drawRect(x + 7, y + 2, x + 9, y + 5, LOCK_COLOR);
+        drawRect(x, y + 5, x + 10, y + 12, LOCK_COLOR);
         drawRect(x + 4, y + 7, x + 6, y + 10, SLOT_BG_COLOR);
     }
     private void drawRunePanelContent(int mouseX, int mouseY) {
@@ -730,7 +741,12 @@ public class CardsGuiScreen extends GuiScreen {
         fontRenderer.drawString(count,
                 runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
+        drawSurface(titleX, runePanelY + 30, runePanelWidth - pad * 2, 19,
+                BUTTON_BG_COLOR, searchField.isFocused() ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(0, 6, 0);
         searchField.drawTextBox();
+        GlStateManager.popMatrix();
         if (searchField.getText().isEmpty() && !searchField.isFocused()) {
             drawFittedString("Поиск...", titleX + 4, runePanelY + 36,
                     runePanelWidth - 24, MUTED_TEXT_COLOR, false);
@@ -755,8 +771,7 @@ public class CardsGuiScreen extends GuiScreen {
                 && mouseY >= y && mouseY < y + runeSlotHeight;
         boolean futureType = visualIndex >= CARD_NAMES.length;
         int border = futureType ? PANEL_BORDER_COLOR : (hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
-        drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight, border);
-        drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
+        drawSurface(x, y, runeSlotWidth, runeSlotHeight, SLOT_BG_COLOR, border);
         if (futureType) {
             int markSize = Math.max(3, Math.min(scaled(8, 3), runeSlotWidth - 4));
             int markX = x + (runeSlotWidth - markSize) / 2;
@@ -778,9 +793,8 @@ public class CardsGuiScreen extends GuiScreen {
         if (definition == null) return;
         boolean hovered = mouseX >= x && mouseX < x + runeSlotWidth
                 && mouseY >= y && mouseY < y + runeSlotHeight;
-        drawRect(x, y, x + runeSlotWidth, y + runeSlotHeight,
+        drawSurface(x, y, runeSlotWidth, runeSlotHeight, SLOT_BG_COLOR,
                 hovered ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
-        drawRect(x + 1, y + 1, x + runeSlotWidth - 1, y + runeSlotHeight - 1, SLOT_BG_COLOR);
         RuneInventory.Entry owned = inventory.get(slot);
         if (owned == null) return;
         drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(owned.layer));
@@ -863,13 +877,11 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawRankCorners(int x, int y, int w, int h, int color) {
-        int length = Math.max(4, Math.min(scaled(12, 6), w / 4));
-        int thickness = w >= 30 ? 2 : 1;
+        int length = Math.max(3, Math.min(scaled(8, 4), w / 5));
+        int thickness = 1;
 
         drawRect(x + 2, y + 2, x + 2 + length, y + 2 + thickness, color);
         drawRect(x + 2, y + 2, x + 2 + thickness, y + 2 + length, color);
-        drawRect(x + w - 2 - length, y + 2, x + w - 2, y + 2 + thickness, color);
-        drawRect(x + w - 2 - thickness, y + 2, x + w - 2, y + 2 + length, color);
     }
 
     private int[] getRuneSlotPosition(int visualIndex) {
@@ -955,8 +967,7 @@ public class CardsGuiScreen extends GuiScreen {
         int w = Math.max(14, Math.min(scaled(38, 22), runeSlotWidth));
         int h = Math.max(18, Math.min(scaled(46, 28), runeSlotHeight));
 
-        drawRect(x - w / 2, y - h / 2, x + w / 2, y + h / 2, SLOT_BORDER_COLOR);
-        drawRect(x - w / 2 + 1, y - h / 2 + 1, x + w / 2 - 1, y + h / 2 - 1, SLOT_BG_COLOR);
+        drawSurface(x - w / 2, y - h / 2, w, h, SLOT_BG_COLOR, SLOT_BORDER_COLOR);
         drawRankCorners(x - w / 2, y - h / 2, w, h, card.color);
 
         if (activeDeck == 0) {
