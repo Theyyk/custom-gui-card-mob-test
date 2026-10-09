@@ -828,10 +828,49 @@ public class CardsGuiScreen extends GuiScreen {
                     runePanelWidth - 24, MUTED_TEXT_COLOR, false);
         }
         drawDivider(titleX, runeGridY - scaled(5, 2), runePanelWidth - pad * 2);
+
+        int runeGridBottom = runeGridY
+                + runeRows * runeSlotHeight
+                + (runeRows - 1) * runeSlotGap;
+
+        int hintY = runeGridBottom + 7;
+        drawFittedString(
+                "СКМ — Пробудить руну",
+                titleX,
+                hintY,
+                runePanelWidth - pad * 2,
+                MUTED_TEXT_COLOR,
+                false
+        );
+        drawFittedString(
+                "CTRL + ЛКМ — Поделиться в чате   •   CTRL + ПКМ — Ослабить",
+                titleX,
+                hintY + 11,
+                runePanelWidth - pad * 2,
+                MUTED_TEXT_COLOR,
+                false
+        );
+
+        int purchasePanelY = purchaseTop - 4;
+        int purchasePanelBottom = runePanelY + runePanelHeight - 5;
+
         drawDivider(titleX, purchaseTop - 23, runePanelWidth - pad * 2);
-        drawFittedString("ПОКУПКА РУН", titleX, purchaseTop - 17, 300, MUTED_TEXT_COLOR, false);
-        drawFittedString("Наведите на руну для информации", titleX,
-                runePanelY + runePanelHeight - 16, runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
+        drawFittedString(
+                "ПОКУПКА РУН",
+                titleX,
+                purchaseTop - 17,
+                300,
+                MUTED_TEXT_COLOR,
+                false
+        );
+
+        drawSection(
+                titleX,
+                purchasePanelY,
+                runePanelWidth - pad * 2,
+                Math.max(1, purchasePanelBottom - purchasePanelY)
+        );
+
         for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
             int[] pos = getRuneSlotPosition(i);
             if (matchesSearch(i)) drawRuneSlot(pos[0], pos[1], i, mouseX, mouseY);
