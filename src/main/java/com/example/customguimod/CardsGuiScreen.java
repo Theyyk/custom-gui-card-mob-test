@@ -236,10 +236,10 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
-    private static class CristalixButton extends GuiButton {
+    private static class PanelButton extends GuiButton {
         private boolean selected;
 
-        CristalixButton(int id, int x, int y, int width, int height, String text) {
+        PanelButton(int id, int x, int y, int width, int height, String text) {
             super(id, x, y, width, height, text);
         }
 
@@ -272,7 +272,7 @@ public class CardsGuiScreen extends GuiScreen {
         }
     }
 
-    private static class ElementButton extends CristalixButton {
+    private static class ElementButton extends PanelButton {
         private final String elementName;
         private final boolean active;
 
@@ -361,7 +361,7 @@ public class CardsGuiScreen extends GuiScreen {
         return Math.max(minimum, Math.round(base * layoutScale));
     }
 
-    // Use one reference canvas so panel proportions and hit targets scale together.
+    // Use one logical canvas so panel proportions and hit targets scale together.
     private float canvasScale;
     private int canvasX, canvasY;
     private String equipmentTooltip;
@@ -431,7 +431,7 @@ public class CardsGuiScreen extends GuiScreen {
 
         int purchaseWidth = (buttonWidth - scaled(4, 2)) / 2;
 
-        buttonList.add(new CristalixButton(
+        buttonList.add(new PanelButton(
                 BUY_BUTTON_ID,
                 buttonX,
                 buyY,
@@ -440,7 +440,7 @@ public class CardsGuiScreen extends GuiScreen {
                 "Купить руну"
         ));
 
-        CristalixButton upgrade = new CristalixButton(
+        PanelButton upgrade = new PanelButton(
                 UPGRADE_PLACEHOLDER_ID,
                 buttonX + purchaseWidth + scaled(4, 2),
                 buyY,
@@ -451,7 +451,7 @@ public class CardsGuiScreen extends GuiScreen {
         upgrade.enabled = false;
         buttonList.add(upgrade);
 
-        buttonList.add(new CristalixButton(
+        buttonList.add(new PanelButton(
                 AMOUNT_BUTTON_START_ID,
                 buttonX,
                 amountY,
@@ -538,7 +538,7 @@ public class CardsGuiScreen extends GuiScreen {
                     new ItemStack(Items.REDSTONE), false, false
             ));
         }
-        buttonList.add(new CristalixButton(
+        buttonList.add(new PanelButton(
                 CLOSE_BUTTON_ID, x, closeY, closeSize, closeSize, "X"
         ));
     }
@@ -751,7 +751,7 @@ public class CardsGuiScreen extends GuiScreen {
         int top = y + 78;
         drawPanel(x, top, centerPanelWidth, centerPanelHeight - 78);
         int slot = 53, gap = 9, left = x + 9;
-        // The reference has five positions across, three side rows and a bottom row.
+        // Five positions across, three side rows and a bottom row.
         String[] upper = {"Основная рука", "Дополнительная рука", "Талисман", "Реликвия", "Артефакт"};
         for (int i = 0; i < 5; i++) {
             drawEquipmentSlot(left + i * (slot + gap), top + 9, slot, upper[i], mouseX, mouseY);
@@ -778,7 +778,7 @@ public class CardsGuiScreen extends GuiScreen {
         drawFittedString("СБОРКИ ЭКИПИРОВКИ", left, buildsY, 205, MUTED_TEXT_COLOR, false);
         drawFittedString("1 из 5 открыто", left + 215, buildsY, 86, MUTED_TEXT_COLOR, false);
         for (int i = 0; i < 5; i++) {
-            CristalixButton tab = new CristalixButton(-1, left + i * 62, buildsY + 16, 57, 19, "" + (i + 1));
+            PanelButton tab = new PanelButton(-1, left + i * 62, buildsY + 16, 57, 19, "" + (i + 1));
             tab.setSelected(i == 0);
             tab.enabled = i == 0;
             tab.drawButton(mc, mouseX, mouseY, 0);
@@ -787,7 +787,7 @@ public class CardsGuiScreen extends GuiScreen {
         drawFittedString("Сборка 1 - пусто", left, buildsY + 39, 301, MUTED_TEXT_COLOR, false);
         String[] actions = {"Надеть", "Записать", "Название"};
         for (int i = 0; i < actions.length; i++) {
-            CristalixButton action = new CristalixButton(-1, left + i * 103, buildsY + 54, 97, 21, actions[i]);
+            PanelButton action = new PanelButton(-1, left + i * 103, buildsY + 54, 97, 21, actions[i]);
             action.enabled = false;
             action.drawButton(mc, mouseX, mouseY, 0);
         }
@@ -1133,7 +1133,7 @@ public class CardsGuiScreen extends GuiScreen {
         drawElementTooltip(mouseX, mouseY);
         drawNavigationTooltip(mouseX, mouseY);
         drawRuneTooltip(mouseX, mouseY);
-        // Tooltips use the reference canvas bounds, too.
+        // Tooltips use the logical canvas bounds, too.
         if (equipmentTooltip != null) drawCanvasTooltip(java.util.Collections.singletonList(equipmentTooltip), mouseX, mouseY);
         GlStateManager.popMatrix();
     }
