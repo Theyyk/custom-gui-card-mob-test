@@ -24,17 +24,17 @@ public class CardsGuiScreen extends GuiScreen {
     private static final int GUI_MAX_HEIGHT = 620;
     private static final int GUI_OUTER_MARGIN = 10;
 
-    private static final int OVERLAY_COLOR = 0x50000000;
-    private static final int PANEL_BG_COLOR = 0xE10B0E12;
-    private static final int PANEL_BG_SOFT = 0xD211151A;
-    private static final int PANEL_BORDER_COLOR = 0xFF252B31;
-    private static final int PANEL_LINE_COLOR = 0xFF3B434B;
-    private static final int SLOT_BG_COLOR = 0xEA0C1014;
-    private static final int SLOT_BORDER_COLOR = 0xFF2B3239;
-    private static final int SLOT_HOVER_COLOR = 0xFF56616D;
-    private static final int SELECTED_COLOR = 0xFF2D7FD6;
-    private static final int TEXT_COLOR = 0xFFF1F1F1;
-    private static final int MUTED_TEXT_COLOR = 0xFF858B92;
+    private static final int OVERLAY_COLOR = 0x78000000;
+    private static final int PANEL_BG_COLOR = 0xF20A0E13;
+    private static final int PANEL_BG_SOFT = 0xE812171D;
+    private static final int PANEL_BORDER_COLOR = 0xFF29313A;
+    private static final int PANEL_LINE_COLOR = 0xFF36424D;
+    private static final int SLOT_BG_COLOR = 0xF00B1015;
+    private static final int SLOT_BORDER_COLOR = 0xFF303943;
+    private static final int SLOT_HOVER_COLOR = 0xFF64717E;
+    private static final int SELECTED_COLOR = 0xFF3B8EDB;
+    private static final int TEXT_COLOR = 0xFFF1F3F5;
+    private static final int MUTED_TEXT_COLOR = 0xFF8D969F;
 
     private static final int NORMAL_COLOR = 0xFF2D7FD6;
     private static final int SILVER_COLOR = 0xFFC9CDD2;
@@ -183,14 +183,16 @@ public class CardsGuiScreen extends GuiScreen {
 
             hovered = mouseX >= x && mouseY >= y && mouseX < x + width && mouseY < y + height;
 
-            int border = selected ? SELECTED_COLOR : (hovered ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
-            int background = selected ? 0xE11A2E43 : (enabled ? 0xE10C1014 : 0xAA080A0C);
+            int border = selected ? SELECTED_COLOR
+                    : (hovered && enabled ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
+            int background = selected ? 0xF01A3043
+                    : (enabled ? (hovered ? 0xF0161C22 : 0xEE0C1116) : 0xAA080A0C);
             int textColor = enabled ? TEXT_COLOR : MUTED_TEXT_COLOR;
 
             drawRect(x, y, x + width, y + height, border);
             drawRect(x + 1, y + 1, x + width - 1, y + height - 1, background);
             if (selected) {
-                drawRect(x + 1, y + height - 2, x + width - 1, y + height - 1, SELECTED_COLOR);
+                drawRect(x + 1, y + height - 3, x + width - 1, y + height - 1, SELECTED_COLOR);
             }
 
             String label = displayString;
@@ -244,14 +246,16 @@ public class CardsGuiScreen extends GuiScreen {
             if (!visible) return;
 
             hovered = mouseX >= x && mouseY >= y && mouseX < x + width && mouseY < y + height;
-            int border = selected ? SELECTED_COLOR : (hovered && enabled ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
-            int background = selected ? 0xE11A2E43 : (enabled ? 0xE10C1014 : 0xAA090B0D);
+            int border = selected ? SELECTED_COLOR
+                    : (hovered && enabled ? SLOT_HOVER_COLOR : PANEL_BORDER_COLOR);
+            int background = selected ? 0xF01A3043
+                    : (enabled ? (hovered ? 0xF0161C22 : 0xEE0C1116) : 0xAA090B0D);
 
             drawRect(x, y, x + width, y + height, border);
             drawRect(x + 1, y + 1, x + width - 1, y + height - 1, background);
 
             if (selected) {
-                drawRect(x + width - 2, y + 2, x + width - 1, y + height - 2, SELECTED_COLOR);
+                drawRect(x + width - 3, y + 2, x + width - 1, y + height - 2, SELECTED_COLOR);
             }
 
             if (!icon.isEmpty()) {
@@ -298,13 +302,13 @@ public class CardsGuiScreen extends GuiScreen {
 
         guiWidth = Math.min(availableWidth, Math.round(GUI_MAX_WIDTH * layoutScale));
         guiHeight = Math.min(availableHeight, Math.round(GUI_MAX_HEIGHT * layoutScale));
-        compactLayout = guiWidth < 620 || guiHeight < 330;
+        compactLayout = guiWidth < 700 || guiHeight < 360;
 
         guiX = (width - guiWidth) / 2;
         guiY = (height - guiHeight) / 2;
 
-        int navGap = scaled(4, 2);
-        navPanelWidth = scaled(28, 20);
+        int navGap = scaled(6, 3);
+        navPanelWidth = scaled(34, 24);
         navPanelHeight = guiHeight;
         navPanelX = guiX + guiWidth - navPanelWidth;
         navPanelY = guiY;
@@ -314,20 +318,20 @@ public class CardsGuiScreen extends GuiScreen {
         mainWidth = guiWidth - navPanelWidth - navGap;
         mainHeight = guiHeight;
 
-        int innerGap = scaled(3, 1);
+        int innerGap = scaled(6, 3);
         int usableWidth = mainWidth - innerGap * 2;
 
-        leftPanelWidth = usableWidth * 26 / 100;
-        centerPanelWidth = usableWidth * 26 / 100;
+        leftPanelWidth = usableWidth * 22 / 100;
+        centerPanelWidth = usableWidth * 28 / 100;
         runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
 
         leftPanelX = mainX;
         leftPanelY = mainY;
-        leftPanelHeight = Math.min(mainHeight, scaled(118, 84));
+        leftPanelHeight = mainHeight;
 
         centerPanelX = leftPanelX + leftPanelWidth + innerGap;
         centerPanelY = mainY;
-        centerPanelHeight = Math.min(mainHeight, scaled(450, 150));
+        centerPanelHeight = mainHeight;
 
         runePanelX = centerPanelX + centerPanelWidth + innerGap;
         runePanelY = mainY;
@@ -356,17 +360,17 @@ public class CardsGuiScreen extends GuiScreen {
         buttonList.clear();
         updateLayout();
 
-        int pad = scaled(7, 3);
+        int pad = scaled(9, 4);
         int buttonX = centerPanelX + pad;
         int buttonWidth = Math.max(34, centerPanelWidth - pad * 2);
-        int amountHeight = scaled(17, 13);
-        int buyHeight = scaled(21, 16);
+        int amountHeight = scaled(18, 13);
+        int buyHeight = scaled(24, 17);
         int bottom = centerPanelY + centerPanelHeight - pad;
 
         int amountRows = compactLayout ? 2 : 1;
         int amountBlockHeight = amountRows * amountHeight + (amountRows - 1) * 2;
         int amountY = bottom - amountBlockHeight;
-        int buyY = amountY - buyHeight - scaled(4, 2);
+        int buyY = amountY - buyHeight - scaled(5, 2);
         purchaseTop = buyY;
 
         buttonList.add(new CristalixButton(
@@ -448,11 +452,11 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void rebuildNavigationButtons() {
-        int pad = scaled(4, 2);
+        int pad = scaled(5, 3);
         int buttonSize = navPanelWidth - pad * 2;
         int x = navPanelX + pad;
         int y = navPanelY + pad;
-        int gap = scaled(4, 2);
+        int gap = scaled(5, 3);
 
         buttonList.add(new NavButton(
                 NAV_RUNES_ID, x, y, buttonSize, buttonSize,
@@ -542,6 +546,9 @@ public class CardsGuiScreen extends GuiScreen {
         if (w <= 0 || h <= 0) return;
         drawRect(x, y, x + w, y + h, PANEL_BORDER_COLOR);
         drawRect(x + 1, y + 1, x + w - 1, y + h - 1, PANEL_BG_COLOR);
+        if (w > 4 && h > 4) {
+            drawRect(x + 1, y + 1, x + w - 1, y + 2, PANEL_LINE_COLOR);
+        }
     }
 
     private void drawSection(int x, int y, int w, int h) {
@@ -572,25 +579,45 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawLeftPanelContent() {
-        int pad = scaled(8, 4);
+        int pad = scaled(10, 5);
         int x = leftPanelX + pad;
         int textW = Math.max(10, leftPanelWidth - pad * 2);
         int y = leftPanelY + pad;
+        Minecraft mc = Minecraft.getMinecraft();
 
+        drawFittedString("RE:VOLUTION", x, y, textW, TEXT_COLOR, true);
+        y += scaled(16, 11);
+        drawFittedString(mc.player == null ? "ПРОФИЛЬ" : mc.player.getName(),
+                x, y, textW, MUTED_TEXT_COLOR, false);
+        y += scaled(18, 12);
+        drawDivider(x, y, textW);
+
+        y += scaled(12, 8);
         drawFittedString("СТАТИСТИКА", x, y, textW, TEXT_COLOR, true);
         y += scaled(18, 13);
-        drawDivider(x, y, textW);
-        y += scaled(9, 6);
-        drawStatLine(x, y, "Клики", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textW);
+        drawSection(x, y, textW, scaled(32, 23));
+        drawStatLine(x + scaled(7, 4), y + scaled(10, 7),
+                "Клики", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272,
+                Math.max(8, textW - scaled(14, 8)));
 
-        y += scaled(23, 16);
+        y += scaled(44, 31);
         drawFittedString("РЕСУРСЫ", x, y, textW, TEXT_COLOR, true);
         y += scaled(18, 13);
-        drawDivider(x, y, textW);
-        y += scaled(9, 6);
-        drawStatLine(x, y, "Монеты", String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D, textW);
-        y += scaled(16, 12);
-        drawStatLine(x, y, "Кристаллы", String.valueOf(ClientPlayerStats.getCrystals()), 0xFF56D7E8, textW);
+        drawSection(x, y, textW, scaled(58, 40));
+        int statX = x + scaled(7, 4);
+        int statW = Math.max(8, textW - scaled(14, 8));
+        drawStatLine(statX, y + scaled(9, 6), "Монеты",
+                String.valueOf(ClientPlayerStats.getCoins()), 0xFFFFC83D, statW);
+        drawDivider(statX, y + scaled(27, 18), statW);
+        drawStatLine(statX, y + scaled(37, 25), "Кристаллы",
+                String.valueOf(ClientPlayerStats.getCrystals()), 0xFF56D7E8, statW);
+
+        int footerY = leftPanelY + leftPanelHeight - pad - scaled(26, 18);
+        if (footerY > y + scaled(66, 44)) {
+            drawDivider(x, footerY, textW);
+            drawFittedString("РУНЫ / ПРОФИЛЬ", x, footerY + scaled(8, 5),
+                    textW, MUTED_TEXT_COLOR, false);
+        }
     }
 
     private void drawStatLine(int x, int y, String name, String value, int color, int availableWidth) {
@@ -602,20 +629,21 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawCenterPanelContent(int mouseX, int mouseY) {
-        int pad = scaled(7, 3);
+        int pad = scaled(9, 4);
         int innerX = centerPanelX + pad;
         int innerW = centerPanelWidth - pad * 2;
         Minecraft mc = Minecraft.getMinecraft();
-        int headerH = scaled(60, 30);
-        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, headerH);
+
+        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, centerPanelHeight);
+
+        int headerH = scaled(52, 34);
         drawFittedString(mc.player == null ? "ИГРОК" : mc.player.getName(),
                 innerX, centerPanelY + pad, innerW, TEXT_COLOR, true);
-        drawFittedString("СНАРЯЖЕНИЕ", innerX,
-                centerPanelY + pad + scaled(19, 12), innerW, MUTED_TEXT_COLOR, false);
-        int equipmentY = centerPanelY + headerH + scaled(8, 4);
-        drawPanel(centerPanelX, equipmentY, centerPanelWidth,
-                centerPanelY + centerPanelHeight - equipmentY);
+        drawFittedString("ПЕРСОНАЖ / СНАРЯЖЕНИЕ", innerX,
+                centerPanelY + pad + scaled(18, 12), innerW, MUTED_TEXT_COLOR, false);
+        drawDivider(innerX, centerPanelY + headerH - scaled(5, 3), innerW);
 
+        int equipmentY = centerPanelY + headerH;
         int gap = scaled(6, 2);
         int topY = equipmentY + pad;
         int equipmentHeight = purchaseTop - topY - scaled(30, 16);
@@ -647,9 +675,10 @@ public class CardsGuiScreen extends GuiScreen {
                     cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
             GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         }
-        drawFittedString("ПОКУПКА РУН", innerX, purchaseTop - scaled(17, 12),
+
+        drawFittedString("ПОКУПКА РУН", innerX, purchaseTop - scaled(19, 13),
                 innerW, MUTED_TEXT_COLOR, false);
-        drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
+        drawDivider(innerX, purchaseTop - scaled(6, 3), innerW);
     }
 
     private void drawEquipmentSlot(int x, int y, int size) {
@@ -871,12 +900,21 @@ public class CardsGuiScreen extends GuiScreen {
 
     private void drawNavigationTooltip(int mouseX, int mouseY) {
         for (GuiButton button : buttonList) {
-            if (button.id != NAV_RUNES_ID) continue;
             if (mouseX < button.x || mouseX >= button.x + button.width
                     || mouseY < button.y || mouseY >= button.y + button.height) continue;
+
             List<String> tooltip = new ArrayList<>();
-            tooltip.add("§bРуны");
-            tooltip.add("§7Статусы и коллекция рун");
+            if (button.id == NAV_RUNES_ID) {
+                tooltip.add("§bРуны");
+                tooltip.add("§7Статусы и коллекция рун");
+            } else if (button.id >= NAV_PLACEHOLDER_START_ID
+                    && button.id <= NAV_PLACEHOLDER_START_ID + 5) {
+                tooltip.add("§7Раздел в разработке");
+            } else if (button.id == CLOSE_BUTTON_ID) {
+                tooltip.add("§cЗакрыть");
+            } else {
+                continue;
+            }
             drawHoveringText(tooltip, mouseX, mouseY);
             return;
         }
