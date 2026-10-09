@@ -28,8 +28,8 @@ public final class ResourceManager {
     private static synchronized void ensureConnected() {
         if (client != null) return;
 
-        client = MongoClients.create("mongodb://localhost:27017");
-        database = client.getDatabase("cristalix_demo");
+        client = MongoClients.create(System.getProperty("customguimod.mongo.uri", "mongodb://localhost:27017"));
+        database = client.getDatabase(System.getProperty("customguimod.mongo.database", "MyProject_build"));
         players = database.getCollection("players");
         resources = database.getCollection("custom_resources");
         mobs = database.getCollection("custom_mobs");
