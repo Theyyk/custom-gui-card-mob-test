@@ -259,16 +259,51 @@ public class CardsGuiScreen extends GuiScreen {
 
             drawSurface(x, y, width, height, background, border);
 
-            String label = displayString;
-            int maxWidth = Math.max(1, width - 6);
-            if (GuiFontRenderer.get(mc).getStringWidth(label) > maxWidth) {
-                label = GuiFontRenderer.get(mc).trimStringToWidth(label, maxWidth);
+            net.minecraft.client.gui.FontRenderer font = GuiFontRenderer.get(mc);
+
+            if (id == AMOUNT_BUTTON_START_ID) {
+                int textWidth = font.getStringWidth(displayString);
+                float textScale = Math.min(
+                        1.0F,
+                        (width - 4) / (float) Math.max(1, textWidth)
+                );
+
+                GlStateManager.pushMatrix();
+                GlStateManager.translate(
+                        x + width / 2.0F,
+                        y + (height - font.FONT_HEIGHT * textScale) / 2.0F,
+                        0.0F
+                );
+                GlStateManager.scale(textScale, textScale, 1.0F);
+                font.drawString(
+                        displayString,
+                        -textWidth / 2.0F,
+                        0.0F,
+                        textColor,
+                        false
+                );
+                GlStateManager.popMatrix();
+                return;
             }
 
-            drawCenteredString(GuiFontRenderer.get(mc), label,
-                    x + width / 2,
-                    y + (height - 8) / 2,
-                    textColor);
+            String[] lines = displayString.split("\n");
+            int lineHeight = font.FONT_HEIGHT;
+            int textY = y + (height - lines.length * lineHeight) / 2;
+
+            for (String line : lines) {
+                String label = font.trimStringToWidth(
+                        line,
+                        Math.max(1, width - 6)
+                );
+                drawCenteredString(
+                        font,
+                        label,
+                        x + width / 2,
+                        textY,
+                        textColor
+                );
+                textY += lineHeight;
+            }
         }
     }
 
@@ -519,27 +554,16 @@ public class CardsGuiScreen extends GuiScreen {
                 new ItemStack(Items.ENCHANTED_BOOK), true, true
         ));
 
-        for (int i = 0; i < 5; i++) {
-            y += buttonSize + gap;
-            if (y + buttonSize >= navPanelY + navPanelHeight - buttonSize * 2) break;
-            buttonList.add(new NavButton(
-                    NAV_PLACEHOLDER_START_ID + i, x, y, buttonSize, buttonSize,
-                    new ItemStack(new net.minecraft.item.Item[]{Items.GOLDEN_APPLE, Items.POTIONITEM,
-                            Items.ENDER_PEARL, Items.BOOK, Items.EMERALD}[i]), false, false
-            ));
-        }
-
         int closeSize = buttonSize;
         int closeY = navPanelY + navPanelHeight - pad - closeSize;
-        int devY = closeY - buttonSize - gap;
-        if (devY > y + gap) {
-            buttonList.add(new NavButton(
-                    NAV_PLACEHOLDER_START_ID + 5, x, devY, buttonSize, buttonSize,
-                    new ItemStack(Items.REDSTONE), false, false
-            ));
-        }
+
         buttonList.add(new PanelButton(
-                CLOSE_BUTTON_ID, x, closeY, closeSize, closeSize, "X"
+                CLOSE_BUTTON_ID,
+                x,
+                closeY,
+                closeSize,
+                closeSize,
+                "X"
         ));
     }
 
