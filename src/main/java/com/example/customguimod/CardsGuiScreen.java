@@ -339,7 +339,7 @@ public class CardsGuiScreen extends GuiScreen {
         guiHeight = mainHeight = 624;
         mainWidth = 1224;
         leftPanelX = 10; leftPanelY = 24;
-        leftPanelWidth = 310; leftPanelHeight = 305;
+        leftPanelWidth = 310; leftPanelHeight = 52;
         centerPanelX = 331; centerPanelY = 24;
         centerPanelWidth = 319; centerPanelHeight = 482;
         runePanelX = 660; runePanelY = 24;
@@ -366,7 +366,8 @@ public class CardsGuiScreen extends GuiScreen {
                 + runeRows * runeSlotHeight
                 + (runeRows - 1) * runeSlotGap
                 + scaled(12, 7);
-        runePanelHeight = mainHeight;
+        // Keep only the grid and the compact purchase section below it.
+        runePanelHeight = contentHeight + 95;
     }
 
     private void rebuildControls() {
@@ -609,22 +610,9 @@ public class CardsGuiScreen extends GuiScreen {
         y += scaled(9, 6);
         drawStatLine(x, y, "Клики", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textW);
 
-        y += 20;
-        drawFittedString("ПЕРСОНАЖ", x, y, textW, MUTED_TEXT_COLOR, false);
-        y += 17;
-        if (mc.player != null) {
-            drawStatLine(x, y, "Здоровье", String.format(java.util.Locale.ROOT, "%.0f / %.0f",
-                    mc.player.getHealth(), mc.player.getMaxHealth()), 0xFFFF7272, textW);
-            y += 17;
-            drawStatLine(x, y, "Броня", String.valueOf(mc.player.getTotalArmorValue()), SILVER_COLOR, textW);
-            y += 17;
-            drawStatLine(x, y, "Уровень", String.valueOf(mc.player.experienceLevel), 0xFF82C97C, textW);
-            y += 17;
-            drawStatLine(x, y, "Питание", mc.player.getFoodStats().getFoodLevel() + " / 20", GOLD_COLOR, textW);
-            y += 17;
-        }
-
-        y += 15;
+        int resourcesY = leftPanelY + leftPanelHeight + 11;
+        drawPanel(leftPanelX, resourcesY, leftPanelWidth, 68);
+        y = resourcesY + pad;
         drawFittedString("РЕСУРСЫ", x, y, textW, TEXT_COLOR, true);
         y += scaled(18, 13);
         drawDivider(x, y, textW);
