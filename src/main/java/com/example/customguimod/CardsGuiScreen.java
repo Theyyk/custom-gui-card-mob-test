@@ -129,6 +129,41 @@ public class CardsGuiScreen extends GuiScreen {
     private int runeGridX;
     private int runeGridY;
 
+    private net.minecraft.client.gui.GuiTextField searchField;
+
+    private boolean matchesSearch(int slot) {
+        if (searchField == null || searchField.getText().isEmpty()) return true;
+        String name = "";
+        if (activeDeck == 0) {
+            EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(slot);
+            if (definition != null) name = definition.name;
+        } else {
+            RuneInventory.Entry entry = getRuneForVisualSlot(slot);
+            if (entry != null && entry.cardIndex >= 0 && entry.cardIndex < CARD_NAMES.length) name = CARD_NAMES[entry.cardIndex];
+        }
+        return name.toLowerCase(java.util.Locale.ROOT).contains(searchField.getText().toLowerCase(java.util.Locale.ROOT));
+    }
+
+    private void drawCanvasTooltip(List<String> lines, int x, int y) {
+        int oldWidth = width, oldHeight = height;
+        width = 1280; height = 669;
+        try { drawHoveringText(lines, x, y); }
+        finally { width = oldWidth; height = oldHeight; }
+    }
+
+    @Override
+    protected void mouseClicked(int x, int y, int button) throws IOException {
+        x = (int) Math.floor((x - canvasX) / canvasScale);
+        y = (int) Math.floor((y - canvasY) / canvasScale);
+        searchField.mouseClicked(x, y, button);
+        super.mouseClicked(x, y, button);
+    }
+
+    @Override
+    protected void keyTyped(char character, int key) throws IOException {
+        if (!searchField.textboxKeyTyped(character, key)) super.keyTyped(character, key);
+    }
+
     private static class FlyingCard {
         double startX;
         double startY;
@@ -287,58 +322,35 @@ public class CardsGuiScreen extends GuiScreen {
         return Math.max(minimum, Math.round(base * layoutScale));
     }
 
+    // Use one reference canvas so panel proportions and hit targets scale together.
+    private float canvasScale;
+    private int canvasX, canvasY;
+    private String equipmentTooltip;
+
     private void updateLayout() {
-        int availableWidth = Math.max(1, width - GUI_OUTER_MARGIN * 2);
-        int availableHeight = Math.max(1, height - GUI_OUTER_MARGIN * 2);
-
-        float widthScale = availableWidth / (float) GUI_MAX_WIDTH;
-        float heightScale = availableHeight / (float) GUI_MAX_HEIGHT;
-        layoutScale = Math.min(1.0F, Math.min(widthScale, heightScale));
-        layoutScale = Math.max(0.1F, layoutScale);
-
-        guiWidth = Math.min(availableWidth, Math.round(GUI_MAX_WIDTH * layoutScale));
-        guiHeight = Math.min(availableHeight, Math.round(GUI_MAX_HEIGHT * layoutScale));
-        compactLayout = guiWidth < 620 || guiHeight < 330;
-
-        guiX = (width - guiWidth) / 2;
-        guiY = (height - guiHeight) / 2;
-
-        int navGap = scaled(5, 2);
-        navPanelWidth = scaled(30, 20);
-        navPanelHeight = Math.min(guiHeight, scaled(315, 190));
-        navPanelX = guiX + guiWidth - navPanelWidth;
-        navPanelY = guiY;
-
-        mainX = guiX;
-        mainY = guiY;
-        mainWidth = guiWidth - navPanelWidth - navGap;
-        mainHeight = guiHeight;
-
-        int innerGap = scaled(7, 3);
-        int usableWidth = mainWidth - innerGap * 2;
-
-        leftPanelWidth = usableWidth * 23 / 100;
-        centerPanelWidth = usableWidth * 30 / 100;
-        runePanelWidth = usableWidth - leftPanelWidth - centerPanelWidth;
-
-        leftPanelX = mainX;
-        leftPanelY = mainY;
-        leftPanelHeight = Math.min(mainHeight, scaled(145, 96));
-
-        centerPanelX = leftPanelX + leftPanelWidth + innerGap;
-        centerPanelY = mainY;
-        centerPanelHeight = Math.min(mainHeight, scaled(430, 210));
-
-        runePanelX = centerPanelX + centerPanelWidth + innerGap;
-        runePanelY = mainY;
-        runePanelHeight = mainHeight;
-
+        canvasScale = Math.min(width / 1280.0F, height / 669.0F);
+        canvasX = Math.round((width - 1280 * canvasScale) / 2);
+        canvasY = Math.round((height - 669 * canvasScale) / 2);
+        layoutScale = 1.0F;
+        compactLayout = false;
+        guiX = mainX = 10;
+        guiY = mainY = 24;
+        guiWidth = 1260;
+        guiHeight = mainHeight = 624;
+        mainWidth = 1224;
+        leftPanelX = 10; leftPanelY = 24;
+        leftPanelWidth = 310; leftPanelHeight = 305;
+        centerPanelX = 331; centerPanelY = 24;
+        centerPanelWidth = 319; centerPanelHeight = 482;
+        runePanelX = 660; runePanelY = 24;
+        runePanelWidth = 575; runePanelHeight = 624;
+        navPanelX = 1244; navPanelY = 24;
+        navPanelWidth = 30; navPanelHeight = 624;
         updateRuneGridLayout();
     }
-
     private void updateRuneGridLayout() {
         int pad = scaled(8, 4);
-        int topReserved = scaled(58, 42);
+        int topReserved = 87;
         int availableWidth = Math.max(1, runePanelWidth - pad * 2);
         runeSlotGap = scaled(5, 2);
         runeColumns = 10;
@@ -354,7 +366,7 @@ public class CardsGuiScreen extends GuiScreen {
                 + runeRows * runeSlotHeight
                 + (runeRows - 1) * runeSlotGap
                 + scaled(12, 7);
-        runePanelHeight = Math.min(mainHeight, contentHeight);
+        runePanelHeight = mainHeight;
     }
 
     private void rebuildControls() {
@@ -362,11 +374,11 @@ public class CardsGuiScreen extends GuiScreen {
         updateLayout();
 
         int pad = scaled(7, 3);
-        int buttonX = centerPanelX + pad;
-        int buttonWidth = Math.max(34, centerPanelWidth - pad * 2);
+        int buttonX = runePanelX + pad;
+        int buttonWidth = runePanelWidth - pad * 2;
         int amountHeight = scaled(17, 13);
         int buyHeight = scaled(21, 16);
-        int bottom = centerPanelY + centerPanelHeight - pad;
+        int bottom = runePanelY + runePanelHeight - 30;
 
         int amountRows = compactLayout ? 2 : 1;
         int amountBlockHeight = amountRows * amountHeight + (amountRows - 1) * 2;
@@ -420,6 +432,11 @@ public class CardsGuiScreen extends GuiScreen {
             }
         }
 
+        String search = searchField == null ? "" : searchField.getText();
+        searchField = new net.minecraft.client.gui.GuiTextField(400, fontRenderer,
+                runePanelX + 8, runePanelY + 30, runePanelWidth - 16, 19);
+        searchField.setMaxStringLength(64);
+        searchField.setText(search);
         rebuildElementButtons();
         rebuildNavigationButtons();
         updateAmountButtonSelection();
@@ -431,7 +448,7 @@ public class CardsGuiScreen extends GuiScreen {
         if (count <= 0) return;
 
         int x = runePanelX + scaled(8, 4);
-        int y = runePanelY + scaled(31, 22);
+        int y = runePanelY + 57;
         int gap = scaled(3, 2);
         int availableRight = runePanelX + runePanelWidth - scaled(8, 4);
 
@@ -592,7 +609,22 @@ public class CardsGuiScreen extends GuiScreen {
         y += scaled(9, 6);
         drawStatLine(x, y, "Клики", "+" + ClientPlayerStats.getTotalDamage(), 0xFFFF7272, textW);
 
-        y += scaled(23, 16);
+        y += 20;
+        drawFittedString("ПЕРСОНАЖ", x, y, textW, MUTED_TEXT_COLOR, false);
+        y += 17;
+        if (mc.player != null) {
+            drawStatLine(x, y, "Здоровье", String.format(java.util.Locale.ROOT, "%.0f / %.0f",
+                    mc.player.getHealth(), mc.player.getMaxHealth()), 0xFFFF7272, textW);
+            y += 17;
+            drawStatLine(x, y, "Броня", String.valueOf(mc.player.getTotalArmorValue()), SILVER_COLOR, textW);
+            y += 17;
+            drawStatLine(x, y, "Уровень", String.valueOf(mc.player.experienceLevel), 0xFF82C97C, textW);
+            y += 17;
+            drawStatLine(x, y, "Питание", mc.player.getFoodStats().getFoodLevel() + " / 20", GOLD_COLOR, textW);
+            y += 17;
+        }
+
+        y += 15;
         drawFittedString("РЕСУРСЫ", x, y, textW, TEXT_COLOR, true);
         y += scaled(18, 13);
         drawDivider(x, y, textW);
@@ -611,77 +643,94 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawCenterPanelContent(int mouseX, int mouseY) {
-        int pad = scaled(7, 3);
-        int innerX = centerPanelX + pad;
-        int innerW = centerPanelWidth - pad * 2;
-        Minecraft mc = Minecraft.getMinecraft();
-        int headerH = scaled(52, 30);
+        equipmentTooltip = null;
+        int x = centerPanelX, y = centerPanelY;
+        drawPanel(x, y, centerPanelWidth, 67);
+        drawFittedString("ПЕРСОНАЖ  |  " + (mc.player == null ? "Игрок" : mc.player.getName()),
+                x + 8, y + 9, 303, TEXT_COLOR, true);
+        drawFittedString("Снаряжение", x + 8, y + 29, 303, SELECTED_COLOR, false);
+        drawFittedString("Руны и экипировка", x + 8, y + 47, 303, MUTED_TEXT_COLOR, false);
 
-        drawPanel(centerPanelX, centerPanelY, centerPanelWidth, centerPanelHeight);
-
-        drawFittedString(mc.player == null ? "ИГРОК" : mc.player.getName(),
-                innerX, centerPanelY + pad, innerW, TEXT_COLOR, true);
-        drawFittedString("ПЕРСОНАЖ / СНАРЯЖЕНИЕ", innerX,
-                centerPanelY + pad + scaled(18, 11), innerW, MUTED_TEXT_COLOR, false);
-        drawDivider(innerX, centerPanelY + headerH - scaled(4, 2), innerW);
-
-        int equipmentY = centerPanelY + headerH + scaled(4, 2);
-        int purchaseLabelY = purchaseTop - scaled(18, 12);
-        int equipmentBottom = purchaseLabelY - scaled(7, 3);
-        int equipmentHeight = Math.max(1, equipmentBottom - equipmentY);
-
-        int gap = scaled(6, 2);
-        int topY = equipmentY + pad;
-        int usableEquipmentHeight = Math.max(1, equipmentHeight - pad * 2);
-        int slot = Math.max(1, Math.min(Math.min(scaled(50, 14), (innerW - gap * 4) / 5),
-                Math.max(1, (usableEquipmentHeight - gap * 4) / 5)));
-        int rowWidth = slot * 5 + gap * 4;
-        int cx = centerPanelX + centerPanelWidth / 2;
-        int rowX = cx - rowWidth / 2;
-        int bottomY = topY + 4 * (slot + gap);
-
+        int top = y + 78;
+        drawPanel(x, top, centerPanelWidth, centerPanelHeight - 78);
+        int slot = 53, gap = 9, left = x + 9;
+        // The reference has five positions across, three side rows and a bottom row.
+        String[] upper = {"Основная рука", "Дополнительная рука", "Талисман", "Реликвия", "Артефакт"};
         for (int i = 0; i < 5; i++) {
-            drawEquipmentSlot(rowX + i * (slot + gap), topY, slot);
-            drawEquipmentSlot(rowX + i * (slot + gap), bottomY, slot);
+            ItemStack stack = mc.player == null ? ItemStack.EMPTY
+                    : i == 0 ? mc.player.getHeldItemMainhand()
+                    : i == 1 ? mc.player.getHeldItemOffhand() : ItemStack.EMPTY;
+            drawEquipmentSlot(left + i * (slot + gap), top + 9, slot, upper[i], stack, i >= 2, mouseX, mouseY);
         }
-
-        int bodyTop = topY + slot + gap;
-        int bodyH = slot * 3 + gap * 2;
+        String[] armor = {"Шлем", "Нагрудник", "Поножи", "Ботинки"};
         for (int i = 0; i < 3; i++) {
-            drawEquipmentSlot(rowX, bodyTop + i * (slot + gap), slot);
-            drawEquipmentSlot(rowX + rowWidth - slot, bodyTop + i * (slot + gap), slot);
+            ItemStack stack = mc.player == null ? ItemStack.EMPTY : mc.player.inventory.armorInventory.get(3 - i);
+            drawEquipmentSlot(left, top + 71 + i * 62, slot, armor[i], stack, false, mouseX, mouseY);
+            drawEquipmentSlot(left + 248, top + 71 + i * 62, slot,
+                    i == 0 ? "Ботинки" : i == 1 ? "Аксессуар" : "Дополнительный артефакт",
+                    i == 0 && mc.player != null ? mc.player.inventory.armorInventory.get(0) : ItemStack.EMPTY,
+                    i == 2, mouseX, mouseY);
         }
-
-        int previewX = rowX + slot + gap;
-        int previewW = rowWidth - (slot + gap) * 2;
-        drawSection(previewX, bodyTop, previewW, bodyH);
-        if (mc.player != null && bodyH > 12) {
-            int previewScale = Math.max(1, Math.min(previewW / 2, (bodyH - scaled(8, 4)) / 2));
-            int entityBottom = bodyTop + (bodyH + previewScale * 2) / 2;
-            GlStateManager.enableTexture2D();
-            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-            GuiInventory.drawEntityOnScreen(cx, entityBottom, previewScale,
-                    cx - mouseX, entityBottom - previewScale * 2 - mouseY, mc.player);
-            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        for (int i = 0; i < 5; i++) {
+            drawEquipmentSlot(left + i * 62, top + 257, slot,
+                    i == 2 ? "Особый предмет" : "Дополнительное снаряжение",
+                    ItemStack.EMPTY, i != 1 && i != 2, mouseX, mouseY);
         }
-
-        int purchaseDividerY = purchaseLabelY - scaled(5, 2);
-        drawDivider(innerX, purchaseDividerY, innerW);
-        drawFittedString("ПОКУПКА РУН", innerX, purchaseLabelY,
-                innerW, MUTED_TEXT_COLOR, false);
-        drawDivider(innerX, purchaseTop - scaled(5, 2), innerW);
+        int previewX = left + 62, previewY = top + 71;
+        drawSection(previewX, previewY, 177, 177);
+        if (mc.player != null) {
+            GlStateManager.color(1, 1, 1, 1);
+            GuiInventory.drawEntityOnScreen(previewX + 88, previewY + 166, 75,
+                    previewX + 88 - mouseX, previewY + 60 - mouseY, mc.player);
+            GlStateManager.color(1, 1, 1, 1);
+        }
+        int buildsY = top + 323;
+        drawFittedString("СБОРКИ ЭКИПИРОВКИ", left, buildsY, 205, MUTED_TEXT_COLOR, false);
+        drawFittedString("1 из 5 открыто", left + 215, buildsY, 86, MUTED_TEXT_COLOR, false);
+        for (int i = 0; i < 5; i++) {
+            CristalixButton tab = new CristalixButton(-1, left + i * 62, buildsY + 16, 57, 19, "" + (i + 1));
+            tab.setSelected(i == 0);
+            tab.enabled = i == 0;
+            tab.drawButton(mc, mouseX, mouseY, 0);
+            if (i > 0) drawLock(left + i * 62 + 36, buildsY + 20);
+        }
+        drawFittedString("Сборка 1 - пусто", left, buildsY + 39, 301, MUTED_TEXT_COLOR, false);
+        String[] actions = {"Надеть", "Записать", "Название"};
+        for (int i = 0; i < actions.length; i++) {
+            CristalixButton action = new CristalixButton(-1, left + i * 103, buildsY + 54, 97, 21, actions[i]);
+            action.enabled = false;
+            action.drawButton(mc, mouseX, mouseY, 0);
+        }
     }
 
-    private void drawEquipmentSlot(int x, int y, int size) {
-        drawRect(x, y, x + size, y + size, SLOT_BORDER_COLOR);
+    private void drawEquipmentSlot(int x, int y, int size, String name, ItemStack stack,
+                                   boolean locked, int mouseX, int mouseY) {
+        boolean hover = mouseX >= x && mouseX < x + size && mouseY >= y && mouseY < y + size;
+        drawRect(x, y, x + size, y + size, hover ? SLOT_HOVER_COLOR : SLOT_BORDER_COLOR);
         drawRect(x + 1, y + 1, x + size - 1, y + size - 1, SLOT_BG_COLOR);
-        if (size >= 14) {
-            int corner = Math.max(3, scaled(6, 3));
-            drawRect(x + 2, y + 2, x + 2 + corner, y + 3, PANEL_LINE_COLOR);
-            drawRect(x + 2, y + 2, x + 3, y + 2 + corner, PANEL_LINE_COLOR);
+        if (locked) {
+            drawLock(x + size / 2 - 5, y + size / 2 - 5);
+        } else if (!stack.isEmpty()) {
+            drawRankCorners(x, y, size, size, SILVER_COLOR);
+            GlStateManager.pushMatrix();
+            GlStateManager.translate(x + 10, y + 10, 0);
+            GlStateManager.scale(2, 2, 1);
+            renderItem.renderItemAndEffectIntoGUI(stack, 0, 0);
+            GlStateManager.popMatrix();
+        } else {
+            drawRect(x + 5, y + 5, x + 14, y + 6, PANEL_LINE_COLOR);
+            drawRect(x + 5, y + 5, x + 6, y + 14, PANEL_LINE_COLOR);
         }
+        if (hover) equipmentTooltip = name + (locked ? " — недоступно" : stack.isEmpty() ? " — пусто" : " — " + stack.getDisplayName());
     }
 
+    private void drawLock(int x, int y) {
+        drawRect(x + 2, y, x + 8, y + 2, MUTED_TEXT_COLOR);
+        drawRect(x + 1, y + 2, x + 3, y + 5, MUTED_TEXT_COLOR);
+        drawRect(x + 7, y + 2, x + 9, y + 5, MUTED_TEXT_COLOR);
+        drawRect(x, y + 5, x + 10, y + 12, PANEL_LINE_COLOR);
+        drawRect(x + 4, y + 7, x + 6, y + 10, SLOT_BG_COLOR);
+    }
     private void drawRunePanelContent(int mouseX, int mouseY) {
         int pad = scaled(8, 4);
         int titleX = runePanelX + pad;
@@ -693,10 +742,19 @@ public class CardsGuiScreen extends GuiScreen {
         fontRenderer.drawString(count,
                 runePanelX + runePanelWidth - pad - fontRenderer.getStringWidth(count), titleY, MUTED_TEXT_COLOR);
         drawDivider(titleX, runePanelY + scaled(23, 16), runePanelWidth - pad * 2);
+        searchField.drawTextBox();
+        if (searchField.getText().isEmpty() && !searchField.isFocused()) {
+            drawFittedString("Поиск...", titleX + 4, runePanelY + 36,
+                    runePanelWidth - 24, MUTED_TEXT_COLOR, false);
+        }
         drawDivider(titleX, runeGridY - scaled(5, 2), runePanelWidth - pad * 2);
+        drawDivider(titleX, purchaseTop - 23, runePanelWidth - pad * 2);
+        drawFittedString("ПОКУПКА РУН", titleX, purchaseTop - 17, 300, MUTED_TEXT_COLOR, false);
+        drawFittedString("Наведите на руну для информации", titleX,
+                runePanelY + runePanelHeight - 16, runePanelWidth - pad * 2, MUTED_TEXT_COLOR, false);
         for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
             int[] pos = getRuneSlotPosition(i);
-            drawRuneSlot(pos[0], pos[1], i, mouseX, mouseY);
+            if (matchesSearch(i)) drawRuneSlot(pos[0], pos[1], i, mouseX, mouseY);
         }
     }
 
@@ -841,6 +899,7 @@ public class CardsGuiScreen extends GuiScreen {
 
     private void drawRuneTooltip(int mouseX, int mouseY) {
         for (int i = 0; i < VISIBLE_RUNE_SLOTS; i++) {
+            if (!matchesSearch(i)) continue;
             int[] pos = getRuneSlotPosition(i);
             int x = pos[0];
             int y = pos[1];
@@ -853,7 +912,7 @@ public class CardsGuiScreen extends GuiScreen {
                 List<String> tooltip = new ArrayList<>();
                 tooltip.add("§b" + definition.name);
                 tooltip.add("§7Тип: §f" + definition.type);
-                drawHoveringText(tooltip, mouseX, mouseY);
+                drawCanvasTooltip(tooltip, mouseX, mouseY);
                 return;
             }
             RuneInventory.Entry rune = getRuneForVisualSlot(i);
@@ -867,7 +926,7 @@ public class CardsGuiScreen extends GuiScreen {
             tooltip.add("§7Тип: §f" + (cardIndex < RUNE_TYPES.length ? RUNE_TYPES[cardIndex] : "Неизвестно"));
             tooltip.add("§7Эффект: §a+" + CARD_STATS[cardIndex]);
             tooltip.add("§7Усиление: §f0");
-            drawHoveringText(tooltip, mouseX, mouseY);
+            drawCanvasTooltip(tooltip, mouseX, mouseY);
             return;
         }
     }
@@ -884,7 +943,7 @@ public class CardsGuiScreen extends GuiScreen {
             if (!button.isActiveElement()) {
                 tooltip.add("§7Нажмите, чтобы выбрать статус");
             }
-            drawHoveringText(tooltip, mouseX, mouseY);
+            drawCanvasTooltip(tooltip, mouseX, mouseY);
             return;
         }
     }
@@ -897,7 +956,7 @@ public class CardsGuiScreen extends GuiScreen {
             List<String> tooltip = new ArrayList<>();
             tooltip.add("§bРуны");
             tooltip.add("§7Статусы и коллекция рун");
-            drawHoveringText(tooltip, mouseX, mouseY);
+            drawCanvasTooltip(tooltip, mouseX, mouseY);
             return;
         }
     }
@@ -927,6 +986,7 @@ public class CardsGuiScreen extends GuiScreen {
     @Override
     public void updateScreen() {
         super.updateScreen();
+        if (searchField != null) searchField.updateCursorCounter();
         for (FlyingCard card : new ArrayList<>(flyingCards)) {
             card.update();
             if (card.isDone()) flyingCards.remove(card);
@@ -936,8 +996,12 @@ public class CardsGuiScreen extends GuiScreen {
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         updateLayout();
-
         drawRect(0, 0, width, height, OVERLAY_COLOR);
+        mouseX = (int) Math.floor((mouseX - canvasX) / canvasScale);
+        mouseY = (int) Math.floor((mouseY - canvasY) / canvasScale);
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(canvasX, canvasY, 0);
+        GlStateManager.scale(canvasScale, canvasScale, 1);
 
         drawPanel(leftPanelX, leftPanelY, leftPanelWidth, leftPanelHeight);
         drawPanel(runePanelX, runePanelY, runePanelWidth, runePanelHeight);
@@ -955,6 +1019,9 @@ public class CardsGuiScreen extends GuiScreen {
         drawElementTooltip(mouseX, mouseY);
         drawNavigationTooltip(mouseX, mouseY);
         drawRuneTooltip(mouseX, mouseY);
+        // Tooltips use the reference canvas bounds, too.
+        if (equipmentTooltip != null) drawCanvasTooltip(java.util.Collections.singletonList(equipmentTooltip), mouseX, mouseY);
+        GlStateManager.popMatrix();
     }
 
     private int getRankColor(int layer) {
@@ -992,8 +1059,8 @@ public class CardsGuiScreen extends GuiScreen {
         if (animate && (activeDeck == 0 ? slot < VISIBLE_RUNE_SLOTS : cardIndex >= 0 && cardIndex < CARD_ICONS.length)) {
             int[] pos = getRuneSlotPosition(activeDeck == 0 ? slot : cardIndex);
             flyingCards.add(new FlyingCard(
-                    centerPanelX + centerPanelWidth / 2.0D,
-                    centerPanelY + centerPanelHeight - scaled(45, 24),
+                    runePanelX + runePanelWidth / 2.0D,
+                    purchaseTop,
                     pos[0] + runeSlotWidth / 2.0D,
                     pos[1] + runeSlotHeight / 2.0D,
                     activeDeck == 0 ? slot : cardIndex,
