@@ -419,8 +419,8 @@ public class CardsGuiScreen extends GuiScreen {
         updateLayout();
 
         int pad = scaled(7, 3);
-        int buttonX = runePanelX + pad;
-        int buttonWidth = runePanelWidth - pad * 2;
+        int buttonX = runePanelX + pad + 4;
+        int buttonWidth = runePanelWidth - pad * 2 - 8;
         int amountHeight = scaled(21, 16);
         int buyHeight = scaled(30, 22);
         int bottom = runePanelY + runePanelHeight - 10;
@@ -833,32 +833,24 @@ public class CardsGuiScreen extends GuiScreen {
                 + runeRows * runeSlotHeight
                 + (runeRows - 1) * runeSlotGap;
 
-        int hintY = runeGridBottom + 7;
+        int hintY = runeGridBottom + 5;
         drawFittedString(
-                "СКМ — Пробудить руну",
+                "СКМ — Пробудить • CTRL + ЛКМ — В чат • CTRL + ПКМ — Ослабить",
                 titleX,
                 hintY,
                 runePanelWidth - pad * 2,
                 MUTED_TEXT_COLOR,
                 false
         );
-        drawFittedString(
-                "CTRL + ЛКМ — Поделиться в чате   •   CTRL + ПКМ — Ослабить",
-                titleX,
-                hintY + 11,
-                runePanelWidth - pad * 2,
-                MUTED_TEXT_COLOR,
-                false
-        );
 
-        int purchasePanelY = purchaseTop - 4;
+        int purchasePanelY = purchaseTop - 2;
         int purchasePanelBottom = runePanelY + runePanelHeight - 5;
 
-        drawDivider(titleX, purchaseTop - 23, runePanelWidth - pad * 2);
+        drawDivider(titleX, purchaseTop - 16, runePanelWidth - pad * 2);
         drawFittedString(
                 "ПОКУПКА РУН",
                 titleX,
-                purchaseTop - 17,
+                purchaseTop - 13,
                 300,
                 MUTED_TEXT_COLOR,
                 false
