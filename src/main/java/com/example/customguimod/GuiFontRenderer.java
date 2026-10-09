@@ -109,7 +109,7 @@ final class GuiFontRenderer extends FontRenderer {
     @Override
     public int drawString(String text, float x, float y, int color, boolean shadow) {
         if (text == null || text.isEmpty()) return (int) x;
-        // Keep the reference's clean, light strokes instead of a heavy pixel shadow.
+        // Keep clean, light strokes instead of a heavy pixel shadow.
         Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
