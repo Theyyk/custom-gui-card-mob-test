@@ -19,8 +19,8 @@ public class MongoManager {
 
     public static void connect() {
         try {
-            client = MongoClients.create("mongodb://localhost:27017");
-            database = client.getDatabase("cristalix_demo");
+            client = MongoClients.create(System.getProperty("customguimod.mongo.uri", "mongodb://localhost:27017"));
+            database = client.getDatabase(System.getProperty("customguimod.mongo.database", "MyProject_build"));
             players = database.getCollection("players");
             CustomGuiMod.logger.info("MongoDB connected!");
         } catch (Exception e) {
@@ -95,38 +95,38 @@ public class MongoManager {
     }
 
     @SuppressWarnings("unchecked")
-public static List<SavedCard> getCardsInDeck(UUID uuid, int deckIndex) {
-    List<SavedCard> result = new ArrayList<>();
-    if (players == null) return result;
+    public static List<SavedCard> getCardsInDeck(UUID uuid, int deckIndex) {
+        List<SavedCard> result = new ArrayList<>();
+        if (players == null) return result;
 
-    Document doc = players.find(new Document("_id", uuid.toString())).first();
-    if (doc == null) return result;
+        Document doc = players.find(new Document("_id", uuid.toString())).first();
+        if (doc == null) return result;
 
-    List<Document> decks = (List<Document>) doc.get("decks");
-    if (decks == null || deckIndex < 0 || deckIndex >= decks.size()) {
-        CustomGuiMod.logger.warn("getCardsInDeck: deck " + deckIndex + " not found");
+        List<Document> decks = (List<Document>) doc.get("decks");
+        if (decks == null || deckIndex < 0 || deckIndex >= decks.size()) {
+            CustomGuiMod.logger.warn("getCardsInDeck: deck " + deckIndex + " not found");
+            return result;
+        }
+
+        Document deck = decks.get(deckIndex);
+        List<Document> cards = (List<Document>) deck.get("cards");
+        if (cards == null) {
+            CustomGuiMod.logger.info("getCardsInDeck: deck " + deckIndex + " has no cards field");
+            return result;
+        }
+
+        for (Document c : cards) {
+            result.add(new SavedCard(
+                    c.getInteger("slot", 0),
+                    c.getInteger("cardIndex", 0),
+                    c.getInteger("layer", 1),
+                    c.getInteger("level", 1)
+            ));
+        }
+
+        CustomGuiMod.logger.info("getCardsInDeck: loaded " + result.size() + " cards from deck " + deckIndex);
         return result;
     }
-
-    Document deck = decks.get(deckIndex);
-    List<Document> cards = (List<Document>) deck.get("cards");
-    if (cards == null) {
-        CustomGuiMod.logger.info("getCardsInDeck: deck " + deckIndex + " has no cards field");
-        return result;
-    }
-
-    for (Document c : cards) {
-        result.add(new SavedCard(
-                c.getInteger("slot", 0),
-                c.getInteger("cardIndex", 0),
-                c.getInteger("layer", 1),
-                c.getInteger("level", 1)
-        ));
-    }
-
-    CustomGuiMod.logger.info("getCardsInDeck: loaded " + result.size() + " cards from deck " + deckIndex);
-    return result;
-}
 
     public static int getActiveDeck(UUID uuid) {
         if (players == null) return 0;
@@ -160,95 +160,136 @@ public static List<SavedCard> getCardsInDeck(UUID uuid, int deckIndex) {
     }
 
     @SuppressWarnings("unchecked")
-public static void addDeck(UUID uuid, String name) {
-    if (players == null) return;
-    Document doc = players.find(new Document("_id", uuid.toString())).first();
-    if (doc == null) {
-        List<Document> decks = new ArrayList<>();
+    public static void addDeck(UUID uuid, String name) {
+        if (players == null) return;
+        Document doc = players.find(new Document("_id", uuid.toString())).first();
+        if (doc == null) {
+            List<Document> decks = new ArrayList<>();
+            decks.add(new Document("name", name).append("cards", new ArrayList<Document>()));
+            players.insertOne(new Document("_id", uuid.toString())
+                    .append("balance", 0)
+                    .append("crystals", 0)
+                    .append("lightnings", 0)
+                    .append("activeDeck", 0)
+                    .append("decks", decks));
+            CustomGuiMod.logger.info("addDeck: created player doc + deck '" + name + "'");
+            return;
+        }
+        List<Document> decks = (List<Document>) doc.get("decks");
+        if (decks == null) decks = new ArrayList<>();
         decks.add(new Document("name", name).append("cards", new ArrayList<Document>()));
-        players.insertOne(new Document("_id", uuid.toString())
-                .append("balance", 0)
-                .append("crystals", 0)
-                .append("lightnings", 0)
-                .append("activeDeck", 0)
-                .append("decks", decks));
-        CustomGuiMod.logger.info("addDeck: created player doc + deck '" + name + "'");
-        return;
+        players.updateOne(
+                new Document("_id", uuid.toString()),
+                new Document("$set", new Document("decks", decks)),
+                new UpdateOptions().upsert(true)
+        );
+        CustomGuiMod.logger.info("addDeck: added deck '" + name + "', total decks: " + decks.size());
     }
-    List<Document> decks = (List<Document>) doc.get("decks");
-    if (decks == null) decks = new ArrayList<>();
-    decks.add(new Document("name", name).append("cards", new ArrayList<Document>()));
-    players.updateOne(
-            new Document("_id", uuid.toString()),
-            new Document("$set", new Document("decks", decks)),
-            new UpdateOptions().upsert(true)
-    );
-    CustomGuiMod.logger.info("addDeck: added deck '" + name + "', total decks: " + decks.size());
-}
-	
-	@SuppressWarnings("unchecked")
-public static void deleteDeck(UUID uuid, int deckIndex) {
-    if (players == null) return;
-    Document doc = players.find(new Document("_id", uuid.toString())).first();
-    if (doc == null) return;
-    List<Document> decks = (List<Document>) doc.get("decks");
-    if (decks == null || deckIndex >= decks.size()) return;
-    decks.remove(deckIndex);
-    int active = getActiveDeck(uuid);
-    if (active >= decks.size()) active = 0;
-    players.updateOne(
-            new Document("_id", uuid.toString()),
-            new Document("$set", new Document("decks", decks).append("activeDeck", active)),
-            new UpdateOptions().upsert(true)
-    );
-}
 
+    @SuppressWarnings("unchecked")
+    public static void deleteDeck(UUID uuid, int deckIndex) {
+        if (players == null) return;
+        Document doc = players.find(new Document("_id", uuid.toString())).first();
+        if (doc == null) return;
+        List<Document> decks = (List<Document>) doc.get("decks");
+        if (decks == null || deckIndex >= decks.size()) return;
+        decks.remove(deckIndex);
+        int active = getActiveDeck(uuid);
+        if (active >= decks.size()) active = 0;
+        players.updateOne(
+                new Document("_id", uuid.toString()),
+                new Document("$set", new Document("decks", decks).append("activeDeck", active)),
+                new UpdateOptions().upsert(true)
+        );
+    }
+
+    @SuppressWarnings("unchecked")
     public static void addCardToDeck(UUID uuid, int deckIndex, int slot, int cardIndex, int layer, int level) {
-    if (players == null) {
-        CustomGuiMod.logger.warn("addCardToDeck: players == null");
-        return;
+        if (players == null) {
+            CustomGuiMod.logger.warn("addCardToDeck: players == null");
+            return;
+        }
+
+        Document doc = players.find(new Document("_id", uuid.toString())).first();
+        if (doc == null) {
+            CustomGuiMod.logger.warn("addCardToDeck: doc not found for " + uuid);
+            return;
+        }
+
+        List<Document> decks = (List<Document>) doc.get("decks");
+        if (decks == null) {
+            CustomGuiMod.logger.warn("addCardToDeck: decks == null");
+            return;
+        }
+        if (deckIndex < 0 || deckIndex >= decks.size()) {
+            CustomGuiMod.logger.warn("addCardToDeck: deck " + deckIndex + " not found (size: " + decks.size() + ")");
+            return;
+        }
+
+        Document deck = decks.get(deckIndex);
+        List<Document> cards = (List<Document>) deck.get("cards");
+        if (cards == null) {
+            cards = new ArrayList<>();
+        }
+
+        cards.add(new Document("slot", slot)
+                .append("cardIndex", cardIndex)
+                .append("layer", layer)
+                .append("level", level));
+
+        deck.put("cards", cards);
+        decks.set(deckIndex, deck);
+
+        players.updateOne(
+                new Document("_id", uuid.toString()),
+                new Document("$set", new Document("decks", decks)),
+                new UpdateOptions().upsert(true)
+        );
+
+        CustomGuiMod.logger.info("addCardToDeck: added card to deck " + deckIndex
+                + " (total in deck: " + cards.size() + ", slot=" + slot + ")");
     }
 
-    Document doc = players.find(new Document("_id", uuid.toString())).first();
-    if (doc == null) {
-        CustomGuiMod.logger.warn("addCardToDeck: doc not found for " + uuid);
-        return;
+    @SuppressWarnings("unchecked")
+    public static boolean setRuneRank(UUID uuid, int deckIndex, int cardIndex, int layer) {
+        if (players == null) return false;
+        Document doc = players.find(new Document("_id", uuid.toString())).first();
+        if (doc == null) return false;
+
+        List<Document> decks = (List<Document>) doc.get("decks");
+        if (decks == null || deckIndex < 0 || deckIndex >= decks.size()) return false;
+
+        Document deck = decks.get(deckIndex);
+        List<Document> cards = (List<Document>) deck.get("cards");
+        if (cards == null) return false;
+
+        Document target = null;
+        for (Document card : cards) {
+            if (card.getInteger("cardIndex", -1) != cardIndex) continue;
+            if (target == null || card.getInteger("layer", 1) > target.getInteger("layer", 1)) {
+                target = card;
+            }
+        }
+        if (target == null) return false;
+
+        target.put("slot", cardIndex);
+        target.put("cardIndex", cardIndex);
+        target.put("layer", Math.max(RuneInventory.NORMAL_RANK, Math.min(RuneInventory.GOLD_RANK, layer)));
+        if (!target.containsKey("level")) target.put("level", 1);
+
+        deck.put("cards", cards);
+        decks.set(deckIndex, deck);
+        players.updateOne(
+                new Document("_id", uuid.toString()),
+                new Document("$set", new Document("decks", decks)),
+                new UpdateOptions().upsert(true)
+        );
+
+        CustomGuiMod.logger.info("setRuneRank: deck=" + deckIndex + ", rune=" + cardIndex + ", rank=" + layer);
+        return true;
     }
 
-    List<Document> decks = (List<Document>) doc.get("decks");
-    if (decks == null) {
-        CustomGuiMod.logger.warn("addCardToDeck: decks == null");
-        return;
-    }
-    if (deckIndex < 0 || deckIndex >= decks.size()) {
-        CustomGuiMod.logger.warn("addCardToDeck: deck " + deckIndex + " not found (size: " + decks.size() + ")");
-        return;
-    }
-
-    Document deck = decks.get(deckIndex);
-    List<Document> cards = (List<Document>) deck.get("cards");
-    if (cards == null) {
-        cards = new ArrayList<>();
-    }
-
-    cards.add(new Document("slot", slot)
-            .append("cardIndex", cardIndex)
-            .append("layer", layer)
-            .append("level", level));
-
-    deck.put("cards", cards);
-    decks.set(deckIndex, deck);
-
-    players.updateOne(
-            new Document("_id", uuid.toString()),
-            new Document("$set", new Document("decks", decks)),
-            new UpdateOptions().upsert(true)
-    );
-
-    CustomGuiMod.logger.info("addCardToDeck: added card to deck " + deckIndex
-            + " (total in deck: " + cards.size() + ", slot=" + slot + ")");
-}
-
+    @SuppressWarnings("unchecked")
     public static void clearDeck(UUID uuid, int deckIndex) {
         if (players == null) return;
         Document doc = players.find(new Document("_id", uuid.toString())).first();

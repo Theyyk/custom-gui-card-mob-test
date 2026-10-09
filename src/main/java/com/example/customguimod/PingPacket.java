@@ -40,6 +40,7 @@ public class PingPacket implements IMessage {
 
     public static class Handler implements IMessageHandler<PingPacket, IMessage> {
         private static final int CARD_COST = 100;
+        private static final Random RANDOM = new Random();
 
         @Override
         @SideOnly(Side.SERVER)
@@ -71,12 +72,19 @@ public class PingPacket implements IMessage {
                         int requestedAmount = Integer.parseInt(rawAmount);
                         if (requestedAmount != 1 && requestedAmount != 5
                                 && requestedAmount != 10 && requestedAmount != 100) {
-                            player.sendMessage(new TextComponentString("§cНекорректное количество карточек."));
+                            player.sendMessage(new TextComponentString("§cНекорректное количество рун."));
                             return;
                         }
                         buyCards(player, deckIndex, requestedAmount, false);
                     } catch (NumberFormatException e) {
-                        player.sendMessage(new TextComponentString("§cНекорректное количество карточек."));
+                        player.sendMessage(new TextComponentString("§cНекорректное количество рун."));
+                    }
+                } else if (action.startsWith("upgrade_rune:")) {
+                    String rawIndex = action.substring("upgrade_rune:".length());
+                    try {
+                        awakenRune(player, deckIndex, Integer.parseInt(rawIndex));
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(new TextComponentString("§cНекорректная руна."));
                     }
                 } else if (action.equals("get_player_stats")) {
                     PlayerStatsService.sendTo(player);
@@ -121,12 +129,16 @@ public class PingPacket implements IMessage {
                 return;
             }
 
+            if (deckIndex == 0) {
+                buyEarthRunes(player, deckIndex, requestedAmount, buyAll);
+                return;
+            }
+
             int balance = MongoManager.getBalance(player.getUniqueID());
             List<Integer> freeSlots = MongoManager.getFreeSlots(player.getUniqueID(), deckIndex);
 
             if (freeSlots.isEmpty()) {
-                player.sendMessage(new TextComponentString("§eДостигнут лимит покупки: " + RuneInventory.PURCHASE_LIMIT
-                        + " рун в сборке."));
+                player.sendMessage(new TextComponentString("§eВ этой legacy-коллекции больше нет свободных слотов."));
                 NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
                 return;
             }
@@ -148,12 +160,11 @@ public class PingPacket implements IMessage {
             }
 
             Collections.shuffle(freeSlots);
-            Random random = new Random();
 
             for (int i = 0; i < amountToBuy; i++) {
                 int slot = freeSlots.get(i);
-                int cardIndex = deckIndex == 0 ? slot : random.nextInt(10);
-                int layer = 1;
+                int cardIndex = RANDOM.nextInt(10);
+                int layer = RuneInventory.NORMAL_RANK;
                 int level = 1;
 
                 MongoManager.addCardToDeck(
@@ -162,22 +173,201 @@ public class PingPacket implements IMessage {
                         new CardPacket(slot, cardIndex, layer, true), player);
             }
 
+            finishPurchase(player, balance, requestedAmount, buyAll, amountToBuy, amountToBuy, 0);
+        }
+
+        private void buyEarthRunes(EntityPlayerMP player, int deckIndex, int requestedAmount, boolean buyAll) {
+            int balance = MongoManager.getBalance(player.getUniqueID());
+            int affordable = balance / CARD_COST;
+            if (affordable <= 0) {
+                player.sendMessage(new TextComponentString(
+                        "§cНедостаточно монет! Нужно минимум " + CARD_COST + ", у тебя " + balance));
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
+            }
+
+            List<MongoManager.SavedCard> cards = MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex);
+            boolean[] owned = new boolean[RuneInventory.BOOST_TYPE_COUNT];
+            int[] bestRanks = new int[RuneInventory.BOOST_TYPE_COUNT];
+            int ownedCount = 0;
+
+            for (MongoManager.SavedCard card : cards) {
+                if (card.cardIndex < 0 || card.cardIndex >= RuneInventory.BOOST_TYPE_COUNT) continue;
+                if (!owned[card.cardIndex]) {
+                    owned[card.cardIndex] = true;
+                    ownedCount++;
+                }
+                bestRanks[card.cardIndex] = Math.max(bestRanks[card.cardIndex], clampRank(card.layer));
+            }
+
+            if (ownedCount >= RuneInventory.BOOST_TYPE_COUNT) {
+                player.sendMessage(new TextComponentString(
+                        allAtLeast(bestRanks, RuneInventory.GOLD_RANK)
+                                ? "§6Все 26 рун уже продвинутые. Достигнут максимальный ранг."
+                                : "§eВсе 26 слотов заполнены. §6Пробудите подходящую руну."));
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
+            }
+
+            int targetAttempts = buyAll ? affordable : Math.min(requestedAmount, affordable);
+            if (targetAttempts <= 0) {
+                NetworkHandler.INSTANCE.sendTo(new PongPacket(balance), player);
+                return;
+            }
+
+            int attempts = 0;
+            int newRunes = 0;
+            int duplicates = 0;
+
+            for (int i = 0; i < targetAttempts && ownedCount < RuneInventory.BOOST_TYPE_COUNT; i++) {
+                attempts++;
+                int runeIndex = RANDOM.nextInt(RuneInventory.BOOST_TYPE_COUNT);
+                if (owned[runeIndex]) {
+                    duplicates++;
+                    continue;
+                }
+
+                owned[runeIndex] = true;
+                bestRanks[runeIndex] = RuneInventory.NORMAL_RANK;
+                ownedCount++;
+                newRunes++;
+                MongoManager.addCardToDeck(
+                        player.getUniqueID(), deckIndex,
+                        runeIndex, runeIndex, RuneInventory.NORMAL_RANK, 1);
+                NetworkHandler.INSTANCE.sendTo(
+                        new CardPacket(runeIndex, runeIndex, RuneInventory.NORMAL_RANK, true), player);
+            }
+
+            finishPurchase(player, balance, requestedAmount, buyAll, attempts, newRunes, duplicates);
+
+            if (ownedCount >= RuneInventory.BOOST_TYPE_COUNT) {
+                player.sendMessage(new TextComponentString(
+                        allAtLeast(bestRanks, RuneInventory.GOLD_RANK)
+                                ? "§6Все 26 рун уже продвинутые. Максимальный ранг достигнут."
+                                : "§6Все 26 слотов заполнены. Пробудите подходящую руну."));
+            }
+        }
+
+        private void finishPurchase(EntityPlayerMP player, int balance, int requestedAmount, boolean buyAll,
+                                    int amountToBuy, int newRunes, int duplicates) {
             int spent = amountToBuy * CARD_COST;
             int newBalance = balance - spent;
             MongoManager.setBalance(player.getUniqueID(), newBalance);
             PlayerStatsService.sendTo(player);
 
+            String duplicateText = duplicates > 0
+                    ? " §7Дубликаты: §e" + duplicates + "§7 (ресурс пока не начисляется)."
+                    : "";
+
             if (!buyAll && amountToBuy < requestedAmount) {
                 player.sendMessage(new TextComponentString(
                         "§eКуплено " + amountToBuy + " из " + requestedAmount
-                                + " карточек. Потрачено: " + spent
-                                + ". Остаток: " + newBalance));
+                                + " попыток. Новых рун: " + newRunes
+                                + ". Потрачено: " + spent + ". Остаток: " + newBalance + "." + duplicateText));
             } else {
                 player.sendMessage(new TextComponentString(
-                        "§aКуплено карточек: " + amountToBuy
-                                + ". Потрачено: " + spent
-                                + ". Остаток: " + newBalance));
+                        "§aПокупок: " + amountToBuy + ". Новых рун: " + newRunes
+                                + ". Потрачено: " + spent + ". Остаток: " + newBalance + "." + duplicateText));
             }
+        }
+
+        private void awakenRune(EntityPlayerMP player, int deckIndex, int runeIndex) {
+            if (deckIndex != 0) {
+                player.sendMessage(new TextComponentString("§cПробуждение пока доступно только первой стихии."));
+                return;
+            }
+            if (runeIndex < 0 || runeIndex >= RuneInventory.BOOST_TYPE_COUNT) {
+                player.sendMessage(new TextComponentString("§cНекорректная руна."));
+                return;
+            }
+
+            List<MongoManager.SavedCard> cards = MongoManager.getCardsInDeck(player.getUniqueID(), deckIndex);
+            boolean[] owned = new boolean[RuneInventory.BOOST_TYPE_COUNT];
+            int[] bestRanks = new int[RuneInventory.BOOST_TYPE_COUNT];
+            int ownedCount = 0;
+
+            for (MongoManager.SavedCard card : cards) {
+                if (card.cardIndex < 0 || card.cardIndex >= RuneInventory.BOOST_TYPE_COUNT) continue;
+                if (!owned[card.cardIndex]) {
+                    owned[card.cardIndex] = true;
+                    ownedCount++;
+                }
+                bestRanks[card.cardIndex] = Math.max(bestRanks[card.cardIndex], clampRank(card.layer));
+            }
+
+            if (ownedCount < RuneInventory.BOOST_TYPE_COUNT) {
+                player.sendMessage(new TextComponentString(
+                        "§eСначала заполни все 26 слотов. Сейчас: " + ownedCount + " / 26."));
+                return;
+            }
+            if (!owned[runeIndex]) {
+                player.sendMessage(new TextComponentString("§cЭта руна ещё не получена."));
+                return;
+            }
+
+            int currentRank = bestRanks[runeIndex];
+            if (currentRank >= RuneInventory.GOLD_RANK) {
+                player.sendMessage(new TextComponentString("§6Эта руна уже продвинутая."));
+                return;
+            }
+
+            if (!allAtLeast(bestRanks, currentRank)) {
+                player.sendMessage(new TextComponentString(
+                        "§eЧтобы пробудить эту руну дальше, сначала доведите все 26 рун минимум до ранга «"
+                                + rankName(currentRank) + "»."));
+                return;
+            }
+
+            int newRank = currentRank + 1;
+
+            MongoManager.clearDeck(player.getUniqueID(), deckIndex);
+
+            for (int rune = 0; rune < RuneInventory.BOOST_TYPE_COUNT; rune++) {
+                if (rune == runeIndex) continue;
+                if (bestRanks[rune] <= currentRank) continue;
+
+                MongoManager.addCardToDeck(
+                        player.getUniqueID(), deckIndex,
+                        rune, rune, bestRanks[rune], 1);
+            }
+
+            MongoManager.addCardToDeck(
+                    player.getUniqueID(), deckIndex,
+                    runeIndex, runeIndex, newRank, 1);
+
+            NetworkHandler.INSTANCE.sendTo(new CardPacket(-1, 0, 0, false), player);
+            for (int rune = 0; rune < RuneInventory.BOOST_TYPE_COUNT; rune++) {
+                if (rune == runeIndex) continue;
+                if (bestRanks[rune] <= currentRank) continue;
+                NetworkHandler.INSTANCE.sendTo(
+                        new CardPacket(rune, rune, bestRanks[rune], false), player);
+            }
+            NetworkHandler.INSTANCE.sendTo(new CardPacket(runeIndex, runeIndex, newRank, false), player);
+            PlayerStatsService.sendTo(player);
+
+            player.sendMessage(new TextComponentString(
+                    "§aРуна пробуждена: §f" + rankName(currentRank) + " §7→ §f" + rankName(newRank)
+                            + "§a. Руны ранга «" + rankName(currentRank)
+                            + "» сброшены, более высокие ранги сохранены."));
+        }
+
+        private boolean allAtLeast(int[] bestRanks, int rank) {
+            for (int rune = 0; rune < RuneInventory.BOOST_TYPE_COUNT; rune++) {
+                if (bestRanks[rune] < rank) return false;
+            }
+            return true;
+        }
+
+        private int clampRank(int rank) {
+            if (rank <= RuneInventory.NORMAL_RANK) return RuneInventory.NORMAL_RANK;
+            if (rank >= RuneInventory.GOLD_RANK) return RuneInventory.GOLD_RANK;
+            return rank;
+        }
+
+        private String rankName(int rank) {
+            if (rank == RuneInventory.SILVER_RANK) return "Улучшенная";
+            if (rank == RuneInventory.GOLD_RANK) return "Продвинутая";
+            return "Обычная";
         }
 
         private void sendDeckState(EntityPlayerMP player) {

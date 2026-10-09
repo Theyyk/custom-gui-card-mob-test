@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.RenderItem;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -717,10 +718,27 @@ public class CardsGuiScreen extends GuiScreen {
         RuneInventory.Entry owned = inventory.get(slot);
         if (owned == null) return;
         drawRankCorners(x, y, runeSlotWidth, runeSlotHeight, getRankColor(owned.layer));
-        int iconIndex = EarthRuneCatalog.iconIndex(slot);
-        if (iconIndex >= 0 && iconIndex < CARD_ICONS.length) {
-            drawRuneIcon(CARD_ICONS[iconIndex], x, y, runeSlotWidth, runeSlotHeight, definition.type);
-        }
+        drawCustomRuneIcon(definition, x, y, runeSlotWidth, runeSlotHeight);
+    }
+
+    private void drawCustomRuneIcon(EarthRuneCatalog.Definition definition, int x, int y, int w, int h) {
+        ResourceLocation texture = new ResourceLocation(definition.iconTexture);
+        int badgeSize = Math.max(3, Math.min(8, Math.min(w, h) / 5));
+        int padding = Math.max(1, Math.round(Math.min(w, h) * 0.07F));
+        int size = Math.max(1, Math.min(w - padding * 2, h - padding * 2));
+        int drawX = x + (w - size) / 2;
+        int drawY = y + (h - size) / 2;
+
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        mc.getTextureManager().bindTexture(texture);
+        drawScaledCustomSizeModalRect(drawX, drawY, 0, 0,
+                128, 128, size, size, 128, 128);
+        GlStateManager.disableBlend();
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+
+        drawRuneTypeBadge(definition.type, x + w - 2, y + h - badgeSize - 2, badgeSize, w - 4);
     }
 
     private void drawRuneIcon(ItemStack icon, int x, int y, int w, int h, String type) {
@@ -738,13 +756,13 @@ public class CardsGuiScreen extends GuiScreen {
     }
 
     private void drawRuneTypeBadge(String type, int x, int y, int size, int availableWidth) {
-        boolean hybrid = "Клик / Земля".equals(type);
+        boolean hybrid = "Клик / Яд".equals(type);
         int glyphSize = hybrid ? Math.max(2, Math.min(size, (availableWidth - 1) / 2)) : size;
         int badgeWidth = hybrid ? glyphSize * 2 + 1 : glyphSize;
         x -= badgeWidth;
         drawRect(x - 1, y - 1, x + badgeWidth + 1, y + glyphSize + 1, 0xD012161B);
         drawTypeGlyph(hybrid ? "Клик" : type, x, y, glyphSize);
-        if (hybrid) drawTypeGlyph("Земля", x + glyphSize + 1, y, glyphSize);
+        if (hybrid) drawTypeGlyph("Яд", x + glyphSize + 1, y, glyphSize);
     }
 
     private void drawTypeGlyph(String type, int x, int y, int size) {
@@ -753,9 +771,9 @@ public class CardsGuiScreen extends GuiScreen {
         if ("Клик".equals(type)) {
             rows = new String[]{"0001100", "0011000", "0110000", "1111110", "0001100", "0011000", "0110000"};
             color = 0xFFFFD34E;
-        } else if ("Земля".equals(type)) {
-            rows = new String[]{"0000011", "0001111", "0011110", "0111100", "1111000", "1100000", "1000000"};
-            color = 0xFF65D55E;
+        } else if ("Яд".equals(type)) {
+            rows = new String[]{"0001000", "0011100", "0111110", "1111111", "1111111", "0111110", "0011100"};
+            color = 0xFF72E84A;
         } else if ("Усиление".equals(type)) {
             rows = new String[]{"0001000", "0011100", "0111110", "1111111", "0001000", "0001000", "0001000"};
             color = 0xFF73BEFF;
@@ -844,7 +862,7 @@ public class CardsGuiScreen extends GuiScreen {
             List<String> tooltip = new ArrayList<>();
             tooltip.add("§b" + button.getElementName());
             if (!button.isActiveElement()) {
-                tooltip.add("§7Нажмите, чтобы выбрать стихию");
+                tooltip.add("§7Нажмите, чтобы выбрать статус");
             }
             drawHoveringText(tooltip, mouseX, mouseY);
             return;
@@ -858,7 +876,7 @@ public class CardsGuiScreen extends GuiScreen {
                     || mouseY < button.y || mouseY >= button.y + button.height) continue;
             List<String> tooltip = new ArrayList<>();
             tooltip.add("§bРуны");
-            tooltip.add("§7Стихии и коллекция рун");
+            tooltip.add("§7Статусы и коллекция рун");
             drawHoveringText(tooltip, mouseX, mouseY);
             return;
         }
@@ -876,9 +894,8 @@ public class CardsGuiScreen extends GuiScreen {
 
         if (activeDeck == 0) {
             EarthRuneCatalog.Definition definition = EarthRuneCatalog.at(card.cardIndex);
-            int iconIndex = EarthRuneCatalog.iconIndex(card.cardIndex);
-            if (definition != null && iconIndex >= 0 && iconIndex < CARD_ICONS.length) {
-                drawRuneIcon(CARD_ICONS[iconIndex], x - w / 2, y - h / 2, w, h, definition.type);
+            if (definition != null) {
+                drawCustomRuneIcon(definition, x - w / 2, y - h / 2, w, h);
             }
             return;
         }
