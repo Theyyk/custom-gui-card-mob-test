@@ -87,7 +87,7 @@ GUI открывается клавишей `C`.
 
 Текстуры находятся не внутри JAR мода, а в отдельном resource pack и подключаются через тот же namespace `customguimod`. Мод хранит `ResourceLocation`, игровую логику и состояние, а resource pack отвечает за PNG.
 
-![Актуальный GUI v1.1.3](screenshots/2026-10-10_05.12.55.png)
+![Актуальный GUI v1.1.4](screenshots/gui-v1.1.4-full.png)
 
 ### Покупка рун
 
