@@ -4,7 +4,7 @@
 
 Проект построен на Forge Dedicated Server и использует единый клиент-серверный мод. Чисто визуальные PNG-ассеты рун вынесены в отдельный [RE:volution Resource Pack](https://github.com/Theyyk/re-volution-resource-pack).
 
-**Текущая версия: `v1.1.3`**
+**Текущая версия: `v1.1.4`**
 
 ---
 
@@ -310,7 +310,7 @@ MongoDB
 JAR создаётся в:
 
 ```text
-build/libs/customguimod-1.1.3.jar
+build/libs/customguimod-1.1.4.jar
 ```
 
 Клиент и сервер должны использовать одинаковую версию мода.
@@ -408,3 +408,11 @@ build/libs/customguimod-1.1.3.jar
 ## 📄 License
 
 См. файл [LICENSE](LICENSE).
+
+## v1.1.4 — archive integration
+
+Выборочно перенесены GUI layout/polish и экранные шрифты Five/Seven поверх логики v1.1.3. [Инвентаризация, roadmap и runtime checklist](docs/v1.1.4-archive-integration.md).
+
+Шрифты получены из клиента Cristalix; сохраняются исходные метаданные. [Ответ поддержки, scope и attribution](docs/permissions/cristalix.md). Использование относится к описанному некоммерческому учебному/портфолио-проекту.
+
+![Исходный скриншот ответа поддержки Cristalix](docs/permissions/cristalix-support.png)
