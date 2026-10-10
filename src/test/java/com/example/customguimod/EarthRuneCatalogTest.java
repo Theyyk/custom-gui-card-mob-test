@@ -2,7 +2,7 @@ package com.example.customguimod;
 
 final class EarthRuneCatalogTest {
     static void run() {
-        check(EarthRuneCatalog.size() == 26, "The reference must define all 26 positions");
+        check(EarthRuneCatalog.size() == 26, "The catalog must define all 26 positions");
         String[] expected = {"Кинжал убийцы", "Кинжал убийцы", "Кинжал убийцы", "Кинжал убийцы",
                 "Накидка убийцы", "Накидка убийцы", "Накидка убийцы", "Перчатка скрытого удара", "Камень заточки", "Камень заточки",
                 "Амулет ярости", "Токсичный осколок", "Токсичный осколок",
@@ -12,7 +12,7 @@ final class EarthRuneCatalogTest {
         java.util.Set<String> textures = new java.util.HashSet<>();
         RuneInventory inventory = new RuneInventory();
         for (int slot = 0; slot < expected.length; slot++) {
-            check(EarthRuneCatalog.at(slot).name.equals(expected[slot]), "Reference order differs at " + slot);
+            check(EarthRuneCatalog.at(slot).name.equals(expected[slot]), "Catalog order differs at " + slot);
             check(!EarthRuneCatalog.at(slot).type.isEmpty(), "Every position needs a type");
             check(EarthRuneCatalog.iconIndex(slot) >= 0 && EarthRuneCatalog.iconIndex(slot) <= 10, "Every rune needs a placeholder icon");
             String texture = EarthRuneCatalog.at(slot).iconTexture;
