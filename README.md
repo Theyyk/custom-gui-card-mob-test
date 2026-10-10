@@ -106,9 +106,6 @@ x100
 
 GUI масштабируется под разные размеры окна, сохраняя основную структуру и доступность элементов управления.
 
-![Компактный GUI](https://raw.githubusercontent.com/Theyyk/re-volution-resource-pack/main/screenshots/gui-poison-runes-compact.png)
-
-![Широкий GUI](https://raw.githubusercontent.com/Theyyk/re-volution-resource-pack/main/screenshots/gui-poison-runes-wide.png)
 
 ---
 
