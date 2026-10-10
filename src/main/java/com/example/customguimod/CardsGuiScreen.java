@@ -136,7 +136,7 @@ public class CardsGuiScreen extends GuiScreen {
     private int runeGridY;
 
     private net.minecraft.client.gui.GuiTextField searchField;
-    private boolean guiBlurLoaded;
+    private net.minecraft.client.shader.ShaderGroup guiBlur;
 
     private boolean matchesSearch(int slot) {
         if (searchField == null) return true;
@@ -380,9 +380,9 @@ public class CardsGuiScreen extends GuiScreen {
                 mc.entityRenderer.loadShader(
                         new ResourceLocation("customguimod", "shaders/post/gui_blur.json")
                 );
-                guiBlurLoaded = true;
+                guiBlur = mc.entityRenderer.getShaderGroup();
             } catch (RuntimeException e) {
-                guiBlurLoaded = false;
+                guiBlur = null;
                 CustomGuiMod.logger.warn("Could not enable GUI blur shader", e);
             }
         }
@@ -1183,10 +1183,10 @@ public class CardsGuiScreen extends GuiScreen {
     public void onGuiClosed() {
         super.onGuiClosed();
 
-        if (guiBlurLoaded) {
+        if (guiBlur != null && mc.entityRenderer.getShaderGroup() == guiBlur) {
             mc.entityRenderer.stopUseShader();
-            guiBlurLoaded = false;
         }
+        guiBlur = null;
     }
 
     private int getRankColor(int layer) {
