@@ -767,10 +767,35 @@ public class CardsGuiScreen extends GuiScreen {
         equipmentTooltip = null;
         int x = centerPanelX, y = centerPanelY;
         drawPanel(x, y, centerPanelWidth, 67);
-        drawFittedString("ПЕРСОНАЖ  |  " + (mc.player == null ? "Игрок" : mc.player.getName()),
-                x + 8, y + 9, 303, TEXT_COLOR, true);
-        drawFittedString("Снаряжение", x + 8, y + 29, 303, SELECTED_COLOR, false);
-        drawFittedString("Руны и экипировка", x + 8, y + 47, 303, MUTED_TEXT_COLOR, false);
+
+        String playerName = mc.player == null ? "Игрок" : mc.player.getName();
+
+        drawFittedString(
+                "#1  |  Моб #1",
+                x + 8,
+                y + 9,
+                centerPanelWidth - 16,
+                TEXT_COLOR,
+                true
+        );
+
+        drawFittedString(
+                "Базовая",
+                x + 8,
+                y + 29,
+                centerPanelWidth - 16,
+                SELECTED_COLOR,
+                false
+        );
+
+        drawFittedString(
+                "—  |  " + playerName,
+                x + 8,
+                y + 47,
+                centerPanelWidth - 16,
+                MUTED_TEXT_COLOR,
+                false
+        );
 
         int top = y + 78;
         drawPanel(x, top, centerPanelWidth, centerPanelHeight - 78);
